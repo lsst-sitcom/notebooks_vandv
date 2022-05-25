@@ -33,9 +33,11 @@ It is strongly recommended to follow Rubin development formats/practices to stan
 This repo is eups compatible.
 If a user wishes to develop their own support methods, this repo must be setup prior to importing them.
 
-One way to setup this repo is to add the following to the ``~/notebooks/.user_setups`` file::
+One way to setup this repo is to add the following to the `~/notebooks/.user_setups` file:
 
-    setup -j notebooks_vandv -r ~/develop/notebooks_vandv
+    setup -j notebooks_vandv -r ~/notebooks/lsst-sitcom/notebooks_vandv
+    
+You can replace `~/notebooks/lsst-sitcom/notebooks_vandv` with the directory where this file is located.
 
 
 ## Tests
