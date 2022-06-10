@@ -44,7 +44,7 @@ async def check_hexapod_lut(component, timeout=10.0):
     print("mount elevation = ", offset.elevation)
     print("mount azimth = ", offset.azimuth)
     print("rotator angle = ", offset.rotation)
-    print("? temperature = ", offset.temperature)
+    print("temperature from sensors on the hex = ", offset.temperature)
     print("\n".join(f"{i} = {getattr(offset, i):.2f}" for i in "xyzuvw"))
 
 
@@ -73,9 +73,9 @@ async def print_hexapod_compensation_values(component, timeout=10.0):
     """Prints out the hexapod unconpensation values."""
     posU = await component.evt_compensatedPosition.aget(timeout=10.0)
     print("Compensated position")
-    print(" ".join(f"{p:10.2f}" for p in [getattr(posU, i) for i in "xyz"]), end="    ")
+    print(" ".join(f"{p:10.2f} um" for p in [getattr(posU, i) for i in "xyz"]), end="    ")
     print(
-        " ".join(f"{p:10.6f}" for p in [getattr(posU, i) for i in "uvw"]),
+        " ".join(f"{p:10.6f} deg" for p in [getattr(posU, i) for i in "uvw"]),
         "  ",
         pd.to_datetime(posU.private_sndStamp, unit="s"),
     )
