@@ -5,12 +5,19 @@ The reason for creation of this repo is to make it easier to execute each Test C
 To keep the size of the repository small and therefore faster to clone/manage, it is recommended to clear the notebooks of rendered content before committing via git.
 It is also recommended that notebooks and/or associated methods that may need to be used by others contain a minimal amount of documentation and/or comments to provide context and/or instructions.
 
+Some notebooks will require you to clone some extra repositories to your Nublado home folder.  
+Since every user has a different setup, the paths might be slightly different.  
+It is recommended to have all the repositories cloned under `$HOME/notebooks`.  
+You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later.  
+For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`.  
+However this is simply a recommendation and you are free to organize your folders as you please.    
+
 
 ## Notebooks
 
 User notebooks should be stored in the notebooks directory.
 The folder structure inside the `notebooks` directory should approximately reflect the organization in Zephyr JIRA.
-The folder/file organization is not set on stone, but one should consider how easy is to find the Notebook counterpart of a Test Case when placing it somewhere.  
+The folder/file organization is not set on stone, but one should consider how easy is to find the Notebook counterpart of a Test Case when placing it somewhere.
 
 Each notebook's name should start with the test case code, a dash, and short name that represent the test case.  
 This will help quick assesment of each notebook's function while keeping the information required to find the actual Test Case.
@@ -33,9 +40,11 @@ It is strongly recommended to follow Rubin development formats/practices to stan
 This repo is eups compatible.
 If a user wishes to develop their own support methods, this repo must be setup prior to importing them.
 
-One way to setup this repo is to add the following to the ``~/notebooks/.user_setups`` file::
+One way to setup this repo is to add the following to the `~/notebooks/.user_setups` file:
 
-    setup -j notebooks_vandv -r ~/develop/notebooks_vandv
+    setup -j notebooks_vandv -r ~/notebooks/lsst-sitcom/notebooks_vandv
+    
+You can replace `~/notebooks/lsst-sitcom/notebooks_vandv` with the directory where this file is located.
 
 
 ## Tests
