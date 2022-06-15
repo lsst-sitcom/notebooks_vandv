@@ -48,3 +48,4 @@ class ExecutionInfo:
             f"\nExecuted by {self.user} on {self.date}."
             f"\n  Running in {self.node} at {self.loc}\n"
         )
+    
