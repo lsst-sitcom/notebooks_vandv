@@ -70,7 +70,7 @@ async def get_hexapod_configuration(component, timeout=10.0):
 
 
 async def print_hexapod_compensation_values(component, timeout=10.0):
-    """Prints out the hexapod unconpensation values."""
+    """Prints out the hexapod conpensation values."""
     posU = await component.evt_compensatedPosition.aget(timeout=10.0)
     print("Compensated position")
     print(" ".join(f"{p:10.2f} um" for p in [getattr(posU, i) for i in "xyz"]), end="    ")
