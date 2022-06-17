@@ -48,4 +48,23 @@ class ExecutionInfo:
             f"\nExecuted by {self.user} on {self.date}."
             f"\n  Running in {self.node} at {self.loc}\n"
         )
-    
+
+    @staticmethod
+    def get_index(test_case, test_execution):
+        """Returns an integer obtained from the four last digits of the test
+        case concatenated with the last four digits of the test execution
+        so it can be used as an index for the `salobj.Controller("Script")`,
+        normally used to send custom messages to the EFD.
+
+        Parameters
+        ----------
+        test_case : str
+            ID of the test case being run.
+        test_execution : str
+            ID of the test execution being run.
+
+        Returns
+        -------
+        int : index to be used in a SAL Script.
+        """
+        return int(test_case[-4:] + test_execution[-4:])
