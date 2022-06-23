@@ -72,7 +72,10 @@ setup -j notebooks_vandv -r $HOME/notebooks/lsst-sitcom/notebooks_vandv
 setup -j ts_cRIOpy -r $HOME/notebooks/lsst-ts/ts_cRIOpy
 ```
 
-Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations. For M2, you can check the M2 Summit Manual page in Confluence.
+Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations. 
+For M2, you can check the [M2 Summit Manual] page in Confluence.
+
+[M2 Summit Manual]: https://confluence.lsstcorp.org/display/LTS/Use+of+M2+EUI+on+Summit
 
 
 ## Methods

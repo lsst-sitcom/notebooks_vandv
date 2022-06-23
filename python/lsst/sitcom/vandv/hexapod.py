@@ -101,13 +101,16 @@ async def print_hexapod_uncompensation_values(component, timeout=10.0):
     )
 
 
-def coeffs_from_lut(index):
+def coeffs_from_lut(index, lut_path=None):
     """Reads the elevation and temperature coefficients from the Look-Up Table
 
     Parameters
     ----------
     index : 1 or 2
         The SAL index for the hexapod (1 = Camera Hexapod, 2 = M2 Hexapod)
+    lut_path : str or None
+        If None, the path to the look-up table falls back to 
+        `$HOME/notebooks/lsst-ts/ts_config_mttcs/MTHexapod/v1/default.yaml`
 
     Returns
     -------
@@ -116,7 +119,16 @@ def coeffs_from_lut(index):
     tCoeff : array
         Temperature coefficients
     """
-    lut_fname = f"{os.environ['HOME']}/notebooks/lsst-ts/ts_config_mttcs/MTHexapod/v1/default.yaml"
+    if not lut_fname:
+        lut_fname = (
+            f"{os.environ['HOME']}/notebooks/lsst-ts/ts_config_mttcs/"
+            f"MTHexapod/v1/default.yaml"
+        )
+        
+    if not os.path.exist(lut_fname):
+        raise FileNotFoundError(
+            f"Could not find LUT for hexapod. Check the path below\n"
+            f"  {lut_name}"
 
     with open(lut_fname, "r") as stream:
         lut_stream = yaml.safe_load(stream)

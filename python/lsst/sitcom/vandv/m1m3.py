@@ -28,7 +28,7 @@ def get_rms(s):
     return rms
 
 
-def lut_elevation_forces(elevation, lut_file):
+def lut_elevation_forces(elevation, lut_fname, lut_path=None):
     """Returns the Elevation Forces for M1M3 based on the elevation angle
     and on a given look-up table.
 
@@ -36,8 +36,12 @@ def lut_elevation_forces(elevation, lut_file):
     ----------
     elevation : float
         Elevation angle in degrees
-    lut_file : string
+    lut_fname : string
         LUT name
+    lut_path : str or None
+        The path to the directory that holds the `lut_file`. 
+        If `None`, it falls back to 
+        `$HOME/notebooks/lsst-ts/ts_m1m3support/SettingFiles/Tables/`
 
     Returns
     -------
@@ -48,12 +52,19 @@ def lut_elevation_forces(elevation, lut_file):
     The look-up tables here are the ones in
     https://github.com/lsst-ts/ts_m1m3support/tree/main/SettingFiles/Tables
     """
-    ts_m1m3support = f"{os.environ['HOME']}/notebooks/lsst-ts/ts_m1m3support"
+    if lut_path is None:
+        lut_path = (
+            f"{os.environ['HOME']}/notebooks/lsst-ts/ts_m1m3support/"
+            "SettingFiles/Tables/"
+        )
 
-    if not os.path.exists(ts_m1m3support):
-        raise OSError(f"Could not find: {ts_m1m3support}")
+    lut_file = os.path.join(lut_path, lut_fname)
 
-    lut_file = f"{ts_m1m3support}/SettingFiles/Tables/{lut_file}"
+    if not os.path.exist(lut_file):
+        raise FileNotFoundError(
+            f"Could not find LUT for M1M3. Check the path below\n"
+            f"  {lut_file}"
+
     lut_el = pd.read_csv(lut_file)
 
     n = len(lut_el.index)
@@ -69,7 +80,7 @@ def lut_elevation_forces(elevation, lut_file):
     return np.array(elevation_forces)
 
 
-def lut_elevation_xforces(elevation):
+def lut_elevation_xforces(elevation, lut_path=None):
     """
     Return the Elevation xForces for M1M3 based on the Elevation angle.
 
@@ -77,16 +88,20 @@ def lut_elevation_xforces(elevation):
     ----------
     elevation : float
         Elevation angle in degrees.
+    lut_path : str or None, optional
+        The path to the directory containing the look-up table. If `None`
+        it fallsback to the default location. 
+        See the docstring for `lut_elevation_forces` for details.
 
     Returns
     -------
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationXTable.csv"
-    return lut_elevation_forces(elevation, lut_file)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
 
 
-def lut_elevation_yforces(elevation):
+def lut_elevation_yforces(elevation, lut_path=None):
     """
     Return the Elevation yForces for M1M3 based on the Elevation angle.
 
@@ -94,16 +109,20 @@ def lut_elevation_yforces(elevation):
     ----------
     elevation : float
         Elevation angle in degrees.
+    lut_path : str or None, optional
+        The path to the directory containing the look-up table. If `None`
+        it fallsback to the default location. 
+        See the docstring for `lut_elevation_forces` for details.
 
     Returns
     -------
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationYTable.csv"
-    return lut_elevation_forces(elevation, lut_file)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
 
 
-def lut_elevation_zforces(elevation):
+def lut_elevation_zforces(elevation, lut_path=None):
     """
     Return the Elevation zForces for M1M3 based on the Elevation angle.
 
@@ -111,13 +130,17 @@ def lut_elevation_zforces(elevation):
     ----------
     elevation : float
         Elevation angle in degrees.
+    lut_path : str or None, optional
+        The path to the directory containing the look-up table. If `None`
+        it fallsback to the default location. 
+        See the docstring for `lut_elevation_forces` for details.
 
     Returns
     -------
     array : the zForces calculated from the lut.
     """
     lut_file = "ElevationZTable.csv"
-    return lut_elevation_forces(elevation, lut_file)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
 
 
 def plot_m1m3_and_elevation(df, prefix=None):
