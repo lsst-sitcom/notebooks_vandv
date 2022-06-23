@@ -32,6 +32,48 @@ A sub-folder should have at least five notebooks within it to justify its existe
 Otherwise, simply add the notebooks in the current folder.  
 This avoid having multiple sub-folders with very few files within them and make it easier to find the files.
 
+## Requirements
+
+This notebooks require some extra repositories to be cloned locally so it can grab some constants and some look-up tables.
+Here is a list of which repos are required to run this notebook:
+
+* [lsst-ts/ts_cRIOpy]
+* [lsst-ts/ts_m1m3support]
+* [lsst-ts/ts_config_mttcs]
+* [lsst-sitcom/M2_FEA]
+
+[lsst-ts/ts_cRIOpy]: https://github.com/lsst-ts/ts_cRIOpy 
+[lsst-ts/ts_m1m3support]: https://github.com/lsst-ts/ts_m1m3support
+[lsst-ts/ts_config_mttcs]: https://github.com/lsst-ts/ts_config_mttcs
+[lsst-sitcom/M2_FEA]: https://github.com/lsst-sitcom/M2_FEA
+
+Since every user has a different setup, the paths might be slightly different.  
+It is recommended to have all the repositories cloned under `$HOME/notebooks`. 
+You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later. 
+For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`. 
+The paths below consider this directory structure but, of course, you are free to organize your folders as you please.
+
+In order to have the required repositories available, open a terminal and run the following commands:
+
+```
+git clone https://github.com/lsst-ts/ts_cRIOpy $HOME/notebooks/lsst-ts/ts_cRIOpy
+git clone https://github.com/lsst-ts/ts_m1m3support.git $HOME/notebooks/lsst-ts/ts_m1m3support
+git clone https://github.com/lsst-ts/ts_config_mttcs $HOME/notebooks/lsst-ts/ts_config_mttcs
+git clone https://github.com/lsst-sitcom/M2_FEA $HOME/notebooks/lsst-sitcom/M2_FEA
+```
+
+If you use a different path for these repositories, make sure that you pass this path when running the associated functions.  
+  
+And add these lines to your `$HOME/notebooks/.user_setup` file:  
+
+```
+export LSST_DDS_DOMAIN_ID=0
+setup -j notebooks_vandv -r $HOME/notebooks/lsst-sitcom/notebooks_vandv
+setup -j ts_cRIOpy -r $HOME/notebooks/lsst-ts/ts_cRIOpy
+```
+
+Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations. For M2, you can check the M2 Summit Manual page in Confluence.
+
 
 ## Methods
 
