@@ -7,6 +7,7 @@ import pandas as pd
 
 from matplotlib.gridspec import GridSpec
 
+from lsst_efd_client import EfdClient
 from lsst.ts.cRIOpy.M1M3FATable import FATABLE
 
 
@@ -19,7 +20,6 @@ def get_rms(s):
         M1M3 (lsst.sal.MTM1M3.forceActuatorData.zForce??) and the 
         elevation angle as "elevation".
     """
-    
     lut = lut_elevation_zforces(s["elevation"])
     cols = [c for c in s.index for fa in FATABLE if f"zForce{fa[1]}" in c]
     
@@ -64,6 +64,7 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None):
         raise FileNotFoundError(
             f"Could not find LUT for M1M3. Check the path below\n"
             f"  {lut_file}"
+        )
 
     lut_el = pd.read_csv(lut_file)
 
@@ -223,67 +224,107 @@ def plot_m1m3_and_elevation(df, prefix=None):
     plt.show()
 
     
-async def plotM1M3Forces(mtm1m3):
-    from lsst.ts.cRIOpy import M1M3FATable
-
-    fel = await mtm1m3.evt_appliedElevationForces.aget(timeout=10.)
-    faz = await mtm1m3.evt_appliedAzimuthForces.aget(timeout=10.)
-    fth = await mtm1m3.evt_appliedThermalForces.aget(timeout=10.)
-    fba = await mtm1m3.evt_appliedBalanceForces.aget(timeout=10.)
-    fac = await mtm1m3.evt_appliedAccelerationForces.aget(timeout=10.)
-    fve = await mtm1m3.evt_appliedVelocityForces.aget(timeout=10.)
-    fst = await mtm1m3.evt_appliedStaticForces.aget(timeout=10.)
-    fab = await mtm1m3.evt_appliedAberrationForces.aget(timeout=10.)
-    fof = await mtm1m3.evt_appliedOffsetForces.aget(timeout=10.)
-    fao = await mtm1m3.evt_appliedActiveOpticForces.aget(timeout=10.)
-    fapp = await mtm1m3.evt_appliedForces.aget(timeout=10.)
-
-    ftel = await mtm1m3.tel_forceActuatorData.next(flush=True, timeout=10.)
+async def show_m1m3_forces_efd(time_cut=None):
+    """Plots an snashot of the current M1M3 status using the 
+    newest data within the time range that was published to the 
+    EFD.
     
+    Parameters
+    ----------
+    time_cut : `astropy.time.Time`, optional
+        Use a time cut instead of the most recent entry.
+        (default is `None`)
+    """
+    from lsst.ts.cRIOpy import M1M3FATable
+    
+    # Query the last events from the EFD
+    location = os.environ["LSST_DDS_PARTITION_PREFIX"]
+    if location == "summit":
+        client = EfdClient("summit_efd")
+    elif location == "tucson":
+        client = EfdClient("tucson_teststand_efd")
+    else:
+        raise ValueError(
+            "Location does not match any valid options {summit|tucson}"
+        )
+        
+    forces = {
+        # "fapp": "lsst.sal.MTM1M3.logevent_appliedForces",  # Not working
+        "fel": "lsst.sal.MTM1M3.logevent_appliedElevationForces", 
+        # "faz": "lsst.sal.MTM1M3.logevent_appliedAzimuthForces",
+        # "fth": "lsst.sal.MTM1M3.logevent_appliedThermalForces",
+        "fba": "lsst.sal.MTM1M3.logevent_appliedBalanceForces",
+        # "fac": "lsst.sal.MTM1M3.logevent_appliedAccelerationForces", 
+        # "fve": "lsst.sal.MTM1M3.logevent_appliedVelocityForces", 
+        "fst": "lsst.sal.MTM1M3.logevent_appliedStaticForces",
+        # "fab": "lsst.sal.MTM1M3.logevent_appliedAberrationForces",
+        # "fof": "lsst.sal.MTM1M3.logevent_appliedOffsetForces",
+        # "fao": "lsst.sal.MTM1M3.logevent_appliedActiveOpticForces",
+        # "ftel": "lsst.sal.MTM1M3.forceActuatorData",
+    }
+    
+    fx, fy, fz = {}, {}, {}
+    for key, topic in forces.items():
+        
+        print(f"Query {topic}")
+        await asyncio.sleep(1)
+
+        df = await client.select_top_n(
+            topic, fields="*", num=1, time_cut=time_cut)
+        
+        # Ugly way of extracting values
+        fx[key] = np.array([df[f"xForces{i}"] for i in range(12)]).squeeze()
+        fy[key] = np.array([df[f"yForces{i}"] for i in range(100)]).squeeze()
+        fz[key] = np.array([df[f"zForces{i}"] for i in range(156)]).squeeze()
+        
     # Get the position of the actuators
     fat = np.array(M1M3FATable.FATABLE)
     xact = np.float64(fat[:, M1M3FATable.FATABLE_XPOSITION])
     yact = np.float64(fat[:, M1M3FATable.FATABLE_YPOSITION])
         
     # Create the plot
-    fig, ax = plt.subplots(3,1, figsize=(15,8))
-    print(fel.xForces)
-    ax[0].plot(fel.xForces, '-o', label='elevation');
-    ax[0].plot(fba.xForces, label='FB')
-    ax[0].plot(fst.xForces, label='static')
-    ax[0].plot(ftel.xForce, '-v', label='measured')
-    ax[0].legend()
-    ax[0].set_title('XForces')
+    fig, (ax1, ax2, ax3) = plt.subplots(
+        nrows=3, 
+        ncols=1, 
+        figsize=(15,8)
+    )
     
-    ax[1].plot(fel.yForces, '-o', label='elevation');
-    ax[1].plot(fba.yForces, label='FB')
-    ax[1].plot(fst.yForces, label='static')
-    ax[1].plot(ftel.yForce, '-v', label='measured')
-    ax[1].legend()
-    ax[1].set_title('YForces')
-    ax[2].plot(fel.zForces, '-o', label='elevation');
-    ax[2].plot(fba.zForces, label='FB')
-    ax[2].plot(fst.zForces, label='static')
-    ax[2].plot(fao.zForces, label='AOS')
-    ax[2].plot(ftel.zForce, '-v', label='measured')
-    ax[2].set_title('ZForces')
-    ax[2].legend()
+    ax1.plot(fx["fel"], "C0o-", label="appliedElevationForces")
+    ax1.plot(fx["fba"], "C1x--", label="appliedBalanceForces")
+    ax1.plot(fx["fst"], "C2+:", label="appliedStaticForces")
+    # ax1.plot(forces["ftel"].xForce, "C3.-", label="forceActuatorData")
+    ax1.legend()
+    ax1.set_title('xForces')
     
-    fig2, ax=plt.subplots( 1,3, figsize = [15,4])
-    aa = np.array(fao.zForces)
-    img = ax[0].scatter(xact, yact, c=aa)
-    ax[0].axis('equal')
-    ax[0].set_title('AOS forces')
-    fig.colorbar(img, ax=ax[0])
+    ax2.plot(fy["fel"], "C0o-", label="appliedElevationForces")
+    ax2.plot(fy["fba"], "C1x--", label="appliedBalanceForces")
+    ax2.plot(fy["fst"], "C2+:", label="appliedStaticForces")
+    # ax2.plot(fy["ftel"], "C3.-", label="forceActuatorData")
+    ax2.legend()
+    ax2.set_title('yForces')
+    
+    ax3.plot(fz["fel"], "C0o-", label="appliedElevationForces")
+    ax3.plot(fz["fba"], "C1x--", label="appliedBalanceForces")
+    ax3.plot(fz["fst"], "C2+:", label="appliedStaticForces")
+    # ax3.plot(fz["ftel"], "C3.-", label="forceActuatorData")
+    ax3.legend()
+    ax3.set_title('yForces')
+    
+#     fig2, ax=plt.subplots( 1,3, figsize = [15,4])
+#     aa = np.array(fao.zForces)
+#     img = ax[0].scatter(xact, yact, c=aa)
+#     ax[0].axis('equal')
+#     ax[0].set_title('AOS forces')
+#     fig.colorbar(img, ax=ax[0])
 
-    aa = np.array(fel.zForces)
-    img = ax[1].scatter(xact, yact, c=aa)
-    ax[1].axis('equal')
-    ax[1].set_title('elevation forces')
-    fig.colorbar(img, ax=ax[1])
+#     aa = np.array(fel.zForces)
+#     img = ax[1].scatter(xact, yact, c=aa)
+#     ax[1].axis('equal')
+#     ax[1].set_title('elevation forces')
+#     fig.colorbar(img, ax=ax[1])
     
-    aa = np.array(fst.zForces)
-    img = ax[2].scatter(xact, yact, c=aa)
-    ax[2].axis('equal')
-    ax[2].set_title('static forces')
-    fig.colorbar(img, ax=ax[2])
+#     aa = np.array(fst.zForces)
+#     img = ax[2].scatter(xact, yact, c=aa)
+#     ax[2].axis('equal')
+#     ax[2].set_title('static forces')
+#     fig.colorbar(img, ax=ax[2])

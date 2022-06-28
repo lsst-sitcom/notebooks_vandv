@@ -129,6 +129,7 @@ def coeffs_from_lut(index, lut_path=None):
         raise FileNotFoundError(
             f"Could not find LUT for hexapod. Check the path below\n"
             f"  {lut_name}"
+        )
 
     with open(lut_fname, "r") as stream:
         lut_stream = yaml.safe_load(stream)
