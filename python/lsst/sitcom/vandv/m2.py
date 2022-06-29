@@ -5,6 +5,8 @@ import pandas as pd
 
 from matplotlib.gridspec import GridSpec
 
+from .efd import query_last_n
+
 
 def plot_m2_actuators():
     """
@@ -65,21 +67,19 @@ def plotM2Forces(axialForces, tangentForces, lut_path=None, size=100):
         The since of the dots in points (matplotlib).
     """
     if lut_path is None:
-        lut_path = (
-            f"{os.environ['HOME']}/notebooks/"
-            f"lsst-sitcom/M2_FEA/data/M2_1um_72_force.txt"
-        )
+        lut_path = f"{os.environ['HOME']}/notebooks/" f"lsst-sitcom/M2_FEA/"
 
-    if not os.path.exist(lut_fname):
+    lut_fname = os.path.join(lut_path, "data/M2_1um_72_force.txt")
+    if not os.path.exists(lut_fname):
         raise FileNotFoundError(
             f"Could not find LUT for m2. Check the path below\n" f"  {lut_name}"
         )
 
-    lut = np.loadtxt(lut_path)
+    lut = np.loadtxt(lut_fname)
 
     # to have +x going to right, and +y going up, we need to transpose and reverse x and y
-    xact = -aa[:, 2]
-    yact = -aa[:, 1]
+    xact = -lut[:, 2]
+    yact = -lut[:, 1]
 
     fig = plt.figure(figsize=(18, 13))
     gs = GridSpec(3, 3)
@@ -89,6 +89,8 @@ def plotM2Forces(axialForces, tangentForces, lut_path=None, size=100):
     ax0.plot(axialForces.applied, label="applied")
     ax0.plot(axialForces.hardpointCorrection, "o", label="FB")
     ax0.plot(axialForces.lutGravity, label="LUT G")
+    ax0.set_ylabel("Axial Forces")
+    ax0.set_xlabel("Axial Actuators Indexes")
     ax0.legend()
 
     ax1 = fig.add_subplot(gs[1, :])
@@ -96,6 +98,8 @@ def plotM2Forces(axialForces, tangentForces, lut_path=None, size=100):
     ax1.plot(tangentForces.applied, label="applied")
     ax1.plot(tangentForces.hardpointCorrection, "o", label="FB")
     ax1.plot(tangentForces.lutGravity, label="LUT G")
+    ax1.set_ylabel("Tangent Forces")
+    ax1.set_xlabel("Tangent Actuators Indexes")
     ax1.legend()
 
     afm = np.array(axialForces.measured)
@@ -118,5 +122,67 @@ def plotM2Forces(axialForces, tangentForces, lut_path=None, size=100):
     img = ax4.scatter(xact, yact, c=afm - afa, s=size)
 
     ax4.axis("equal")
-    ax4.set_title("measured\n tangencial forces")
+    ax4.set_title("Measured minus Applied \nAxial Forces")
     fig.colorbar(img, ax=ax4)
+
+    fig.tight_layout()
+    return fig
+
+
+async def show_last_forces_efd(
+    client, lower_t=None, upper_t=None, execution=None, lut_path=None
+):
+    """Plots an snashot of the current M2 status using the
+    most recent data within the time range that was published to the
+    EFD.
+
+    Parameters
+    ----------
+    client : lsst_efd_client.EfdClient
+        A live connection to the EFD.
+    lower_t : `astropy.time.Time`, optional
+        Lower time used in the query. (default: `upper_t - 15m`)
+    upper_t : `astropy.time.Time`, optional
+        Upper time used in the query. (default: `Time.now()`)
+    execution : str, optional
+        Test execution id (e.g. LVV-EXXXX).
+    lut_path : str, optional
+        Alternative path to a local copy of the `lsst-sitcom/M2_FEA` repository.
+    """
+    axialForces = await query_last_n(
+        client,
+        "lsst.sal.MTM2.axialForce",
+        fields="*",
+        upper_t=upper_t,
+        lower_t=lower_t,
+        debug=True,
+    )
+
+    tangentForces = await query_last_n(
+        client,
+        "lsst.sal.MTM2.tangentForce",
+        fields="*",
+        upper_t=upper_t,
+        lower_t=lower_t,
+        debug=True,
+    )
+
+    # Ugly way to convert dataframes into fake telemetries
+    class TelAxialForces:
+        measured = np.array([axialForces[f"measured{i}"] for i in range(72)])
+        applied = np.array([axialForces[f"applied{i}"] for i in range(72)])
+        lutGravity = np.array([axialForces[f"lutGravity{i}"] for i in range(72)])
+        hardpointCorrection = np.array(
+            [axialForces[f"hardpointCorrection{i}"] for i in range(72)]
+        )
+
+    class TelTangentForces:
+        measured = np.array([tangentForces[f"measured{i}"] for i in range(6)])
+        applied = np.array([tangentForces[f"applied{i}"] for i in range(6)])
+        lutGravity = np.array([tangentForces[f"lutGravity{i}"] for i in range(6)])
+        hardpointCorrection = np.array(
+            [tangentForces[f"hardpointCorrection{i}"] for i in range(6)]
+        )
+
+    fig = plotM2Forces(TelAxialForces, TelTangentForces, lut_path=lut_path)
+    plt.show()
