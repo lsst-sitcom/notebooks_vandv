@@ -73,7 +73,9 @@ async def print_hexapod_compensation_values(component, timeout=10.0):
     """Prints out the hexapod conpensation values."""
     posU = await component.evt_compensatedPosition.aget(timeout=10.0)
     print("Compensated position")
-    print(" ".join(f"{p:10.2f} um" for p in [getattr(posU, i) for i in "xyz"]), end="    ")
+    print(
+        " ".join(f"{p:10.2f} um" for p in [getattr(posU, i) for i in "xyz"]), end="    "
+    )
     print(
         " ".join(f"{p:10.6f} deg" for p in [getattr(posU, i) for i in "uvw"]),
         "  ",
@@ -109,7 +111,7 @@ def coeffs_from_lut(index, lut_path=None):
     index : 1 or 2
         The SAL index for the hexapod (1 = Camera Hexapod, 2 = M2 Hexapod)
     lut_path : str or None
-        If None, the path to the look-up table falls back to 
+        If None, the path to the look-up table falls back to
         `$HOME/notebooks/lsst-ts/ts_config_mttcs/MTHexapod/v1/default.yaml`
 
     Returns
@@ -124,11 +126,10 @@ def coeffs_from_lut(index, lut_path=None):
             f"{os.environ['HOME']}/notebooks/lsst-ts/ts_config_mttcs/"
             f"MTHexapod/v1/default.yaml"
         )
-        
+
     if not os.path.exist(lut_fname):
         raise FileNotFoundError(
-            f"Could not find LUT for hexapod. Check the path below\n"
-            f"  {lut_name}"
+            f"Could not find LUT for hexapod. Check the path below\n" f"  {lut_name}"
         )
 
     with open(lut_fname, "r") as stream:

@@ -59,7 +59,7 @@ def plotM2Forces(axialForces, tangentForces, lut_path=None, size=100):
         Telemetry obtained from `mtm2.tel_tangentForce.aget` containing
         the measured and the applied tangencial forces as 6 element arrays.
     lut_path : str or None
-        If None, the path to the look-up table falls back to 
+        If None, the path to the look-up table falls back to
         `$HOME/notebooks/lsst-sitcom/M2_FEA/data/M2_1um_72_force.txt"
     size : int, optional
         The since of the dots in points (matplotlib).
@@ -69,19 +69,18 @@ def plotM2Forces(axialForces, tangentForces, lut_path=None, size=100):
             f"{os.environ['HOME']}/notebooks/"
             f"lsst-sitcom/M2_FEA/data/M2_1um_72_force.txt"
         )
-    
+
     if not os.path.exist(lut_fname):
         raise FileNotFoundError(
-            f"Could not find LUT for m2. Check the path below\n"
-            f"  {lut_name}"
+            f"Could not find LUT for m2. Check the path below\n" f"  {lut_name}"
         )
-        
+
     lut = np.loadtxt(lut_path)
-    
+
     # to have +x going to right, and +y going up, we need to transpose and reverse x and y
     xact = -aa[:, 2]
     yact = -aa[:, 1]
-        
+
     fig = plt.figure(figsize=(18, 13))
     gs = GridSpec(3, 3)
 
