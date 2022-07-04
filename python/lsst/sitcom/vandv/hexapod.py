@@ -120,14 +120,14 @@ def coeffs_from_lut(index, lut_path=None):
         Elevation coefficients
     tCoeff : array
         Temperature coefficients
+    lut_path : str, optional
+        Alternative path to a local copy of the `lsst-ts/ts_config_mttcs` repository.
     """
-    if not lut_fname:
-        lut_fname = (
-            f"{os.environ['HOME']}/notebooks/lsst-ts/ts_config_mttcs/"
-            f"MTHexapod/v1/default.yaml"
-        )
+    if not lut_path:
+        lut_path = f"{os.environ['HOME']}/notebooks/lsst-ts/ts_config_mttcs/"
 
-    if not os.path.exist(lut_fname):
+    lut_fname = os.path.join(lut_path, "MTHexapod/v1/default.yaml")
+    if not os.path.exists(lut_fname):
         raise FileNotFoundError(
             f"Could not find LUT for hexapod. Check the path below\n" f"  {lut_name}"
         )
@@ -160,3 +160,26 @@ async def print_predicted_compensation(elevCoeff, elev):
         mypoly = np.polynomial.Polynomial(coeff)
         pred.append(mypoly(elev))
     print(" ".join(f"{p:10.2f}" for p in pred))
+
+    
+async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=None, lut_path=None, index=1):
+    """Plots an snashot of the current hexapod status using the
+    most recent data within the time range that was published to the
+    EFD.
+
+    Parameters
+    ----------
+    client : lsst_efd_client.EfdClient
+        A live connection to the EFD.
+    lower_t : `astropy.time.Time`, optional
+        Lower time used in the query. (default: `upper_t - 15m`)
+    upper_t : `astropy.time.Time`, optional
+        Upper time used in the query. (default: `Time.now()`)
+    execution : str, optional
+        Test execution id (e.g. LVV-EXXXX).
+    lut_path : str, optional
+        Alternative path to a local copy of the `lsst-sitcom/M2_FEA` repository.
+    index : int, optional
+        SAL Index used to select either the Camera Hexapod (1) or the M2 Hexapod (2)
+    """
+    pass
