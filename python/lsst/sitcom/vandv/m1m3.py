@@ -334,7 +334,7 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
     
     for i, (short, long) in enumerate(zip(short_list, long_list)):
         ax = fig.add_subplot(gs[3:, i])
-        im = ax.scatter(xact, yact, c=fz[short])
+        im = ax.scatter(xact, yact, c=fz[short], s=100)
         ax.axis("equal")
         ax.set_title(long)
         fig.colorbar(im, ax=ax)
