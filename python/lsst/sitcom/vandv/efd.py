@@ -1,7 +1,8 @@
 import os
 
 from astropy import units as u
-from astropy.time import Time, TimeDelta
+from astropy.time import Time
+from datetime import timedelta
 
 from lsst_efd_client import EfdClient
 
@@ -9,14 +10,14 @@ import warnings
 
 
 __all__ = [
-    "create_efd_client"
-    "query_last_from_efd",
+    "create_efd_client" "query_last_from_efd",
 ]
+
 
 def create_efd_client():
     """Create an EFD client for different test-stand locations"""
     location = os.environ["LSST_DDS_PARTITION_PREFIX"]
-    
+
     if location == "summit":
         client = EfdClient("summit_efd")
     elif location == "tucson":
@@ -27,7 +28,16 @@ def create_efd_client():
     return client
 
 
-async def query_last_n(client, topic_name, fields, num=1, index=None, lower_t=None, upper_t=None, debug=False):
+async def query_last_n(
+    client,
+    topic_name,
+    fields,
+    num=1,
+    index=None,
+    lower_t=None,
+    upper_t=None,
+    debug=False,
+):
     """Query the last `num` data from the EFD.
 
     This function will probably be removed in the near future when
@@ -54,23 +64,34 @@ async def query_last_n(client, topic_name, fields, num=1, index=None, lower_t=No
     if isinstance(fields, list):
         fields = fields.join(",")
 
+    delta_t = timedelta(minutes=15)
+
     if upper_t is None and lower_t is None:
         upper_t = Time.now()
-        lower_t = upper_t - TimeDelta(15 * u.minute)
+        lower_t = upper_t - delta_t
     elif upper_t is None and lower_t is not None:
-        upper_t = lower_t + TimeDelta(15 * u.minute)
+        assert isinstance(
+            lower_t, Time
+        ), "`lower_t` is expected to be an astropy.time.Time instance"
+        upper_t = lower_t + delta_t
     elif upper_t is not None and lower_t is None:
-        lower_t = upper_t - TimeDelta(15 * u.minute)        
-        
+        assert isinstance(
+            upper_t, Time
+        ), "`upper_t` is expected to be an astropy.time.Time instance"
+        lower_t = upper_t - delta_t
+
     if upper_t < lower_t:
-        warnings.warn("lower_t is greater than upper_t. Inverting values so we can get a valid query interval.")
+        warnings.warn(
+            "lower_t is greater than upper_t. Inverting values so we"
+            " can get a valid query interval."
+        )
         temp_t = upper_t
         upper_t = lower_t
         lower_t = temp_t
 
     query = client.build_time_range_query(topic_name, fields, lower_t, upper_t)
     query = f"{query} ORDER BY DESC LIMIT {num}"
-    
+
     df = await client.influx_client.query(query)
-    
+
     return df
