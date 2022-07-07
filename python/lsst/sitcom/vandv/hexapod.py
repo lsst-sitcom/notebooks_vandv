@@ -70,10 +70,12 @@ async def get_hexapod_configuration(component, timeout=10.0):
 
 
 async def print_hexapod_compensation_values(component, timeout=10.0):
-    """Prints out the hexapod unconpensation values."""
+    """Prints out the hexapod conpensation values."""
     posU = await component.evt_compensatedPosition.aget(timeout=10.0)
     print("Compensated position")
-    print(" ".join(f"{p:10.2f} um" for p in [getattr(posU, i) for i in "xyz"]), end="    ")
+    print(
+        " ".join(f"{p:10.2f} um" for p in [getattr(posU, i) for i in "xyz"]), end="    "
+    )
     print(
         " ".join(f"{p:10.6f} deg" for p in [getattr(posU, i) for i in "uvw"]),
         "  ",
@@ -101,13 +103,16 @@ async def print_hexapod_uncompensation_values(component, timeout=10.0):
     )
 
 
-def coeffs_from_lut(index):
+def coeffs_from_lut(index, lut_path=None):
     """Reads the elevation and temperature coefficients from the Look-Up Table
 
     Parameters
     ----------
     index : 1 or 2
         The SAL index for the hexapod (1 = Camera Hexapod, 2 = M2 Hexapod)
+    lut_path : str or None
+        If None, the path to the look-up table falls back to
+        `$HOME/notebooks/lsst-ts/ts_config_mttcs/MTHexapod/v1/default.yaml`
 
     Returns
     -------
@@ -115,8 +120,17 @@ def coeffs_from_lut(index):
         Elevation coefficients
     tCoeff : array
         Temperature coefficients
+    lut_path : str, optional
+        Alternative path to a local copy of the `lsst-ts/ts_config_mttcs` repository.
     """
-    lut_fname = f"{os.environ['HOME']}/notebooks/lsst-ts/ts_config_mttcs/MTHexapod/v1/default.yaml"
+    if not lut_path:
+        lut_path = f"{os.environ['HOME']}/notebooks/lsst-ts/ts_config_mttcs/"
+
+    lut_fname = os.path.join(lut_path, "MTHexapod/v1/default.yaml")
+    if not os.path.exists(lut_fname):
+        raise FileNotFoundError(
+            f"Could not find LUT for hexapod. Check the path below\n" f"  {lut_name}"
+        )
 
     with open(lut_fname, "r") as stream:
         lut_stream = yaml.safe_load(stream)
@@ -146,3 +160,26 @@ async def print_predicted_compensation(elevCoeff, elev):
         mypoly = np.polynomial.Polynomial(coeff)
         pred.append(mypoly(elev))
     print(" ".join(f"{p:10.2f}" for p in pred))
+
+    
+async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=None, lut_path=None, index=1):
+    """Plots an snashot of the current hexapod status using the
+    most recent data within the time range that was published to the
+    EFD.
+
+    Parameters
+    ----------
+    client : lsst_efd_client.EfdClient
+        A live connection to the EFD.
+    lower_t : `astropy.time.Time`, optional
+        Lower time used in the query. (default: `upper_t - 15m`)
+    upper_t : `astropy.time.Time`, optional
+        Upper time used in the query. (default: `Time.now()`)
+    execution : str, optional
+        Test execution id (e.g. LVV-EXXXX).
+    lut_path : str, optional
+        Alternative path to a local copy of the `lsst-sitcom/M2_FEA` repository.
+    index : int, optional
+        SAL Index used to select either the Camera Hexapod (1) or the M2 Hexapod (2)
+    """
+    pass
