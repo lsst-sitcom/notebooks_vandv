@@ -1,7 +1,9 @@
 import asyncio
+import logging
 import os
 
 import pandas as pd
+from astropy.time import Time
 
 from lsst.ts import utils
 from lsst.rsp import get_node
@@ -9,6 +11,7 @@ from lsst.rsp import get_node
 
 __all__ = [
     "ExecutionInfo",
+    "check_last_evt",
 ]
 
 
@@ -68,3 +71,18 @@ class ExecutionInfo:
         int : index to be used in a SAL Script.
         """
         return int(test_case[-4:] + test_execution[-4:])
+
+    
+def check_last_evt(event): 
+    """Check the last event
+    
+    Parameters
+    ----------
+    event : SAL Event
+    """
+    evt = event.get()
+    evt_time = Time(evt.private_sndStamp, format="unix", scale="tai")
+    evt_time.format = "iso"
+    logging.info(f"\n {event} last logevent at {evt_time.utc} is \n \t{evt}")
+    
+    return evt
