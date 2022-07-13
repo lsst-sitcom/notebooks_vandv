@@ -81,8 +81,12 @@ def check_last_evt(event):
     event : SAL Event
     """
     evt = event.get()
-    evt_time = Time(evt.private_sndStamp, format="unix", scale="tai")
-    evt_time.format = "iso"
-    logging.info(f"\n {event} last logevent at {evt_time.utc} is \n \t{evt}")
+    
+    if evt is None:
+        logging.warning(f"{event} returned None")
+    else:
+        evt_time = Time(evt.private_sndStamp, format="unix", scale="tai")
+        evt_time.format = "iso"
+        logging.info(f"\n {event} last logevent at {evt_time.utc} is \n \t{evt}")
     
     return evt
