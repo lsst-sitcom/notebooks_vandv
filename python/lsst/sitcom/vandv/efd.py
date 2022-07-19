@@ -4,9 +4,14 @@ from astropy import units as u
 from astropy.time import Time
 from datetime import timedelta
 
-from lsst_efd_client import EfdClient
-
 import warnings
+
+try:
+    from lsst_efd_client import EfdClient
+    efd = True
+except ModuleNotFoundError:
+    warnings.warn("Package not found: lsst_efd_client - EFD related operations will not be available")
+    efd = False
 
 
 __all__ = [
@@ -16,6 +21,10 @@ __all__ = [
 
 def create_efd_client():
     """Create an EFD client for different test-stand locations"""
+    if not efd:
+        warnings.warn("EFD Client not available")
+        return None
+    
     location = os.environ["LSST_DDS_PARTITION_PREFIX"]
 
     if location == "summit":
@@ -61,6 +70,10 @@ async def query_last_n(
     debug : bool, optional
         Prints the query used in the EFD for debugging purposes.
     """
+    if not efd:
+        warnings.warn("EFD Client not available")
+        return None
+    
     if isinstance(fields, list):
         fields = fields.join(",")
 

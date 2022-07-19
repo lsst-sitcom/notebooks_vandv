@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from lsst_efd_client import EfdClient
 from lsst.ts.cRIOpy.M1M3FATable import FATABLE
 
 from .efd import query_last_n

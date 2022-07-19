@@ -1,12 +1,19 @@
 import asyncio
 import logging
 import os
+import warnings
 
 import pandas as pd
 from astropy.time import Time
 
 from lsst.ts import utils
-from lsst.rsp import get_node
+
+try:
+    from lsst.rsp import get_node
+except ModuleNotFoundError:
+    warnings.warn("Could not find package: lsst.rsp"
+                  " - the node information will not be available")
+    get_node = lambda: "(not available)"
 
 
 __all__ = [
@@ -32,7 +39,7 @@ class ExecutionInfo:
 
     def __init__(self):
         # Extract your name from the Jupyter Hub
-        self.user = os.environ["JUPYTERHUB_USER"]
+        self.user = os.getenv("JUPYTERHUB_USER", "(JUPYTERHUB_USER does not exist)")
 
         # Extract execution date
         self.date = utils.astropy_time_from_tai_unix(utils.current_tai())
@@ -40,7 +47,7 @@ class ExecutionInfo:
 
         # This is used later to define where Butler stores the images or
         # to define which EFD client to use
-        self.loc = os.environ["LSST_DDS_PARTITION_PREFIX"]
+        self.loc = os.getenv("LSST_DDS_PARTITION_PREFIX", "(LSST_DDS_PARTITION_PREFIX does not exist)") 
         self.node = get_node()
 
         # Create folder for plots
