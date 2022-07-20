@@ -1,6 +1,8 @@
 import asyncio
 import time
 
+import numpy as np
+
        
 async def moveMountInElevationSteps(mount, target_el, azimuth=0, step_size=0.25, time_sleep=1):
     """Move the mount from the current elevation angle to the target elevation angle 
@@ -30,12 +32,12 @@ async def moveMountInElevationSteps(mount, target_el, azimuth=0, step_size=0.25,
     elevation : float
         Current elevation
     """
-    current_el = mtmount.tel_elevation.get().actualPosition
+    current_el = mount.tel_elevation.get().actualPosition
     n_steps = int(np.ceil(np.abs(current_el - target_el) / step_size))
 
     for el in np.linspace(current_el, target_el, n_steps):
         print(f"Moving elevation to {el:.2f} deg")
-        await mtmount.cmd_moveToTarget.set_start(azimuth=azimuth, elevation=el)
+        await mount.cmd_moveToTarget.set_start(azimuth=azimuth, elevation=el)
         time.sleep(time_sleep)
         
     return azimuth, el
