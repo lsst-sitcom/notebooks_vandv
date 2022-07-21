@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import warnings
 
 import matplotlib.gridspec as gridspec
@@ -235,16 +236,16 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
     upper_t : `astropy.time.Time`, optional
         Upper time used in the query. (default: `Time.now()`)
     execution : str
-        Test execution id (e.g. LVV-EXXXX). 
+        Test execution id (e.g. LVV-EXXXX).
     """
     from lsst.ts.cRIOpy import M1M3FATable
-    
+
     # Number of actuators in X, Y and Z
-    x_size = 12 
+    x_size = 12
     y_size = 100
     z_size = 156
 
-    # Topics for plotting 
+    # Topics for plotting
     forces = {
         # "fapp": "lsst.sal.MTM1M3.logevent_appliedForces",  # Not working
         "fel": "lsst.sal.MTM1M3.logevent_appliedElevationForces",
@@ -267,16 +268,11 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
         await asyncio.sleep(1)
 
         df = await query_last_n(
-            client, 
-            topic, 
-            fields="*", 
-            upper_t=upper_t,
-            lower_t=lower_t,
-            debug=True
+            client, topic, fields="*", upper_t=upper_t, lower_t=lower_t, debug=True
         )
-        
-        # Ugly way of extracting values        
-        if key in ["ftel"]:        
+
+        # Ugly way of extracting values
+        if key in ["ftel"]:
             fx[key] = np.array([df[f"xForce{i}"] for i in range(x_size)]).squeeze()
             fy[key] = np.array([df[f"yForce{i}"] for i in range(y_size)]).squeeze()
             fz[key] = np.array([df[f"zForce{i}"] for i in range(z_size)]).squeeze()
@@ -284,7 +280,7 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
             fx[key] = np.empty(x_size)
             fy[key] = np.empty(y_size)
             fz[key] = np.array([df[f"zForces{i}"] for i in range(z_size)]).squeeze()
-        else: 
+        else:
             fx[key] = np.array([df[f"xForces{i}"] for i in range(x_size)]).squeeze()
             fy[key] = np.array([df[f"yForces{i}"] for i in range(y_size)]).squeeze()
             fz[key] = np.array([df[f"zForces{i}"] for i in range(z_size)]).squeeze()
@@ -321,16 +317,16 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
     ax3.plot(fz["ftel"], "C3.-", label="forceActuatorData")
     ax3.set_ylabel("yForces")
     ax3.set_xlabel("Actuators Index")
-    
+
     ax2.legend()
 
     short_list = ["fao", "fel", "fst"]
     long_list = [
-        "appliedActiveOpticForces", 
+        "appliedActiveOpticForces",
         "appliedElevationForces",
         "appliedStaticForces",
     ]
-    
+
     for i, (short, long) in enumerate(zip(short_list, long_list)):
         ax = fig.add_subplot(gs[3:, i])
         im = ax.scatter(xact, yact, c=fz[short], s=100)
@@ -339,8 +335,218 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
         fig.colorbar(im, ax=ax)
 
     fig.tight_layout()
-    
+
     if execution:
         time = df.index.strftime("%y%m%d_%H%M")[0]
         os.makedirs("./plots", exist_ok=True)
         fig.savefig(os.path.join("./plots", f"{execution}_m1m3_snapshot_{time}.png"))
+
+
+def timeline_zforces(
+    ax,
+    df,
+    column="zForce",
+    labels=None,
+    colors=None,
+    ls=None,
+    indexes=None,
+    ids=None,
+    elevation=None,
+):
+    """Shows the z-forces applied on M1M3 as a time-line.
+
+    Parameters
+    ----------
+    ax : matplotlib.Axes
+        Axes where the plot will be held.
+    df : pd.DataFrame
+        Dataframe obtained from `lsst.sal.MTM1M3.forceActuatorData`
+        that will be plot.
+    column : str, optional
+        Column prefix used to select which forces to plot.
+        Default: zForce.
+    colors : list of strings, optional
+        Colors applied to each data.
+    ls : list of strings, optional
+        Linestyle applied to each data.
+    indexes : list of int, optional
+        List of the indexes associated to each actuator (0-based)
+    ids : list of in, optional
+        List of the IDs associated to each actuator.
+        Default: [129, 229, 329, 429].
+    elevation : pd.DataFrame, optional
+        Time-series containing the elevation angle obtained from
+        `lsst.sal.MTMount.elevation`.
+    """
+    from lsst.ts.cRIOpy.M1M3FATable import FATABLE
+
+    if ids and indexes:
+        raise ValueError(
+            "Both `ids` and `indexes` where provided when"
+            " only one of them was expected."
+        )
+
+    actuators_ids_table = [fa[1] for fa in FATABLE]
+
+    if ids:
+        indexes = [actuators_ids_table.index(_id) for _id in ids]
+    elif indexes is not None:
+        pass
+    else:
+        ids = [129, 229, 329, 429]
+        indexes = [actuators_ids_table.index(_id) for _id in ids]
+
+    for idx in indexes:
+        forces = df[f"{column}{idx}"].dropna()
+        ax.plot(forces, label=f"{column}{idx} ({actuators_ids_table[idx]})")
+
+    if elevation is not None:
+        el = elevation["actualPosition"].dropna()
+        ax_twin = ax.twinx()
+        ax_twin.fill_between(el.index, 0, el, fc="black", alpha=0.1)
+        ax_twin.set_ylim(
+            el.min() - 0.1 * el.values.ptp(), el.max() + 0.1 * el.values.ptp()
+        )
+        ax_twin.set_ylabel("Elevation [deg]")
+
+    ax.set_title("zForce Actuator Data")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("zForce [N]")
+    ax.grid(":", alpha=0.2)
+    ax.legend()
+
+
+def snapshot_forces(ax, series, prefix, labels=None):
+    """Plot a snapshot of the xForces in pd.Series.
+
+    Parameters
+    ----------
+    ax : matplotlib.Axes
+        Axis that will hold the plot
+    series : list
+        List of series containing the xForce(s).
+    prefix : str
+        Prefix used to select the columns
+    label : list, optional
+        List of labels for the series.
+    """
+    if labels and (len(series) != len(labels)):
+        raise ValueError(
+            "Expected the number of elemenets in `series` and `labels`"
+            " to be the same"
+        )
+
+    if labels is None:
+        labels = [""] * len(series)
+
+    for s, l in zip(series, labels):
+        data = [s[c] for c in s.index if prefix in c]
+        ax.plot(data, label=l)
+
+    ax.set_title(prefix)
+    ax.set_xlabel("Actuators Index")
+    ax.set_ylabel(prefix)
+    ax.grid(":", alpha=0.2)
+
+    if labels:
+        ax.legend()
+
+
+def snapshot_xforces(ax, series, labels=None):
+    snapshot_forces(ax, series, "xForce", labels=labels)
+
+
+def snapshot_yforces(ax, series, labels=None):
+    snapshot_forces(ax, series, "yForce", labels=labels)
+
+
+def snapshot_zforces(ax, series, labels=None):
+    snapshot_forces(ax, series, "zForce", labels=labels)
+
+
+def snapshot_zforces_overview(
+    ax, series, prefix="zForce", title="", size=100, show_ids=True, show_mirrors=True
+):
+    """Show the force intensity on each actuator.
+
+    Parameters
+    ----------
+    ax : matplotlib.Axes
+        Axis that will hold the plot.
+    series : pd.Series
+        Series containing the forces.
+    prefix : str
+        Prefix used to select the columns.
+    title : str, optional
+        Label for the plot.
+    size : int, optional
+        Dot size in points.
+    show_ids: bool, optional
+        Show each actuator ID (default: False)
+    show_mirrors: bool, optional
+        Show the mirrors area (default: False)
+
+    See also
+    --------
+    https://docushare.lsst.org/docushare/dsweb/Get/LSE-11/
+    LSE-11_OpticalDesignSummary_rel3.5_20190819.pdf (Figure 15)
+    """
+    from lsst.ts.cRIOpy import M1M3FATable
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    # Show mirror area
+    if show_mirrors:
+        m1_outer_diameter = 8.405  # meters
+        m1_inner_diameter = 5.116  # meters
+        m3_outer_diameter = 5.016  # meters
+        m3_inner_diameter = 1.100  # meters
+
+        m1_mirror = plt.Circle((0, 0), m1_outer_diameter / 2.0, fc="k", alpha=0.2)
+        ax.add_patch(m1_mirror)
+
+        m1_inner = plt.Circle((0, 0), m1_inner_diameter / 2.0, fc="w")
+        ax.add_patch(m1_inner)
+
+        m3_mirror = plt.Circle((0, 0), m3_outer_diameter / 2.0, fc="k", alpha=0.2)
+        ax.add_patch(m3_mirror)
+
+        m3_inner = plt.Circle((0, 0), m3_inner_diameter / 2.0, fc="w")
+        ax.add_patch(m3_inner)
+
+    # Show actuators and their values
+    cols = [c for c in series.index if prefix in c]
+    idxs = [int(s) for c in cols for s in re.findall(r"\d+", c)]
+
+    # Get the position of the actuators
+    fat = np.array(M1M3FATable.FATABLE)
+
+    ids = fat[idxs, M1M3FATable.FATABLE_ID]
+    xact = np.float64(fat[idxs, M1M3FATable.FATABLE_XPOSITION])
+    yact = np.float64(fat[idxs, M1M3FATable.FATABLE_YPOSITION])
+
+    data = series[cols]
+    im = ax.scatter(xact, yact, c=data, s=size)
+
+    if show_ids:
+        for x, y, _id in zip(xact, yact, ids):
+            ax.text(
+                x,
+                y,
+                f"{_id}",
+                color="w",
+                ha="center",
+                va="center",
+                fontsize=0.05 * size,
+            )
+
+    ax.axis("equal")
+    ax.set_title(title)
+    ax.set_axis_off()
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = ax.figure.colorbar(im, cax=cax, orientation="vertical")
+
+    cbar.set_label("Force Intensity [N]")
+
+    cbar.ax.tick_params(axis="y", labelsize=6)
