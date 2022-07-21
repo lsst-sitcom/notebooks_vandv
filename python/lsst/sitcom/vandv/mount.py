@@ -40,4 +40,7 @@ async def moveMountInElevationSteps(mount, target_el, azimuth=0, step_size=0.25,
         await mount.cmd_moveToTarget.set_start(azimuth=azimuth, elevation=el)
         time.sleep(time_sleep)
         
+    if current_el == target_el:
+        el = target_el
+        
     return azimuth, el
