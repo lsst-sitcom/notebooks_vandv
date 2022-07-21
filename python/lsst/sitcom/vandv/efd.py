@@ -8,9 +8,12 @@ import warnings
 
 try:
     from lsst_efd_client import EfdClient
+
     efd = True
 except ModuleNotFoundError:
-    warnings.warn("Package not found: lsst_efd_client - EFD related operations will not be available")
+    warnings.warn(
+        "Package not found: lsst_efd_client - EFD related operations will not be available"
+    )
     efd = False
 
 
@@ -24,7 +27,7 @@ def create_efd_client():
     if not efd:
         warnings.warn("EFD Client not available")
         return None
-    
+
     location = os.environ["LSST_DDS_PARTITION_PREFIX"]
 
     if location == "summit":
@@ -73,7 +76,7 @@ async def query_last_n(
     if not efd:
         warnings.warn("EFD Client not available")
         return None
-    
+
     if isinstance(fields, list):
         fields = fields.join(",")
 
@@ -110,10 +113,12 @@ async def query_last_n(
     return df
 
 
-async def query_script_message_contains(client, contains, lower_t=None, upper_t=None, num=1):
-    """Query the `lsst.sal.Script.logevent_logMessage` while applying a filter 
+async def query_script_message_contains(
+    client, contains, lower_t=None, upper_t=None, num=1
+):
+    """Query the `lsst.sal.Script.logevent_logMessage` while applying a filter
     criteria.
-    
+
     Parameters
     ----------
     topic : str
@@ -133,14 +138,14 @@ async def query_script_message_contains(client, contains, lower_t=None, upper_t=
 
     topic_name = "lsst.sal.Script.logevent_logMessage"
     fields = "message"
-    
+
     if isinstance(contains, list):
         for i, c in enumerate(contains):
-            contains[i] = f"\"message\" =~ /{c}/"
+            contains[i] = f'"message" =~ /{c}/'
         contains = " AND ".join(contains)
     else:
-        contains = f"\"message\" =~ /{contains}/"
-        
+        contains = f'"message" =~ /{contains}/'
+
     delta_t = timedelta(minutes=15)
 
     if upper_t is None and lower_t is None:
@@ -165,11 +170,16 @@ async def query_script_message_contains(client, contains, lower_t=None, upper_t=
         temp_t = upper_t
         upper_t = lower_t
         lower_t = temp_t
-       
+
     query = client.build_time_range_query(topic_name, fields, lower_t, upper_t)
     query = f"{query} AND ({contains})"
     query = f"{query} ORDER BY DESC LIMIT {num}"
-    
+
     df = await client.influx_client.query(query)
-    
+
     return df
+
+
+def time_pd_to_astropy(timestamp):
+    """Converts a pandas timestamp to astropy Time"""
+    return Time(timestamp.isoformat().split("+")[0], scale="utc", format="isot")
