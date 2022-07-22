@@ -414,6 +414,7 @@ def timeline_zforces(
     ax.set_ylabel("zForce [N]")
     ax.grid(":", alpha=0.2)
     ax.legend()
+    return ax
 
 
 def snapshot_forces(ax, series, prefix, labels=None):
@@ -451,17 +452,22 @@ def snapshot_forces(ax, series, prefix, labels=None):
     if labels:
         ax.legend()
 
+    return ax
+
 
 def snapshot_xforces(ax, series, labels=None):
-    snapshot_forces(ax, series, "xForce", labels=labels)
+    ax = snapshot_forces(ax, series, "xForce", labels=labels)
+    return ax
 
 
 def snapshot_yforces(ax, series, labels=None):
-    snapshot_forces(ax, series, "yForce", labels=labels)
+    ax = snapshot_forces(ax, series, "yForce", labels=labels)
+    return ax
 
 
 def snapshot_zforces(ax, series, labels=None):
-    snapshot_forces(ax, series, "zForce", labels=labels)
+    ax = snapshot_forces(ax, series, "zForce", labels=labels)
+    return ax
 
 
 def snapshot_zforces_overview(
@@ -550,3 +556,5 @@ def snapshot_zforces_overview(
     cbar.set_label("Force Intensity [N]")
 
     cbar.ax.tick_params(axis="y", labelsize=6)
+
+    return ax
