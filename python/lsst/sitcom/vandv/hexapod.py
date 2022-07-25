@@ -162,24 +162,45 @@ async def print_predicted_compensation(elevCoeff, elev):
     print(" ".join(f"{p:10.2f}" for p in pred))
 
     
-async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=None, lut_path=None, index=1):
-    """Plots an snashot of the current hexapod status using the
-    most recent data within the time range that was published to the
-    EFD.
-
+def timeline_position(ax, dfs, column="z", elevation=None):
+    """Show the Camera/M2 Hexapod positions as a timeline.
+    
     Parameters
     ----------
-    client : lsst_efd_client.EfdClient
-        A live connection to the EFD.
-    lower_t : `astropy.time.Time`, optional
-        Lower time used in the query. (default: `upper_t - 15m`)
-    upper_t : `astropy.time.Time`, optional
-        Upper time used in the query. (default: `Time.now()`)
-    execution : str, optional
-        Test execution id (e.g. LVV-EXXXX).
-    lut_path : str, optional
-        Alternative path to a local copy of the `lsst-sitcom/M2_FEA` repository.
-    index : int, optional
-        SAL Index used to select either the Camera Hexapod (1) or the M2 Hexapod (2)
+    ax : matplotlib.Axes
+        Axes that will hold the plot.
+    dfs : list of pd.DataFrame
+        List of dataframes containing the positions.
+    column : str
+        What axis to plot.
+        Default: "z"
     """
-    pass
+    column = column.lower()
+    symbols = ["o", "s", "+", "x"]
+    
+    if column in "xyz":
+        unit = "um"
+    elif column in "uvw":
+        unit = "urad"
+    else: 
+        raise ValueError("Expected column to be x/y/z or u/v/w")
+    
+    for i, df in enumerate(dfs):
+        s = symbols[i]
+        ax.plot(df[column], f"{s}-")
+        
+    ax.grid(":", alpha=0.2)
+    ax.set_xlabel("Time")
+    ax.set_ylabel(f"{column}\n [{unit}]")
+    
+    if elevation is not None:
+        el = elevation["actualPosition"].dropna()
+        ax_twin = ax.twinx()
+        ax_twin.fill_between(el.index, 0, el, fc="black", alpha=0.1)
+        ax_twin.set_ylim(
+            el.min() - 0.1 * el.values.ptp(), el.max() + 0.1 * el.values.ptp()
+        )
+        ax_twin.set_ylabel("Elevation\n [deg]")
+    
+    return ax
+
