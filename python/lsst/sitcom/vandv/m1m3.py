@@ -449,7 +449,7 @@ def snapshot_forces(ax, series, prefix, labels=None):
     ax.set_ylabel(prefix)
     ax.grid(":", alpha=0.2)
 
-    if labels:
+    if all(labels):
         ax.legend()
 
     return ax
@@ -527,8 +527,8 @@ def snapshot_zforces_overview(
     fat = np.array(M1M3FATable.FATABLE)
 
     ids = fat[idxs, M1M3FATable.FATABLE_ID]
-    xact = -np.float64(fat[idxs, M1M3FATable.FATABLE_XPOSITION])
-    yact = -np.float64(fat[idxs, M1M3FATable.FATABLE_YPOSITION])
+    xact = - np.float64(fat[idxs, M1M3FATable.FATABLE_XPOSITION])
+    yact = - np.float64(fat[idxs, M1M3FATable.FATABLE_YPOSITION])
 
     data = series[cols]
     im = ax.scatter(xact, yact, c=data, s=size)
@@ -544,6 +544,12 @@ def snapshot_zforces_overview(
                 va="center",
                 fontsize=0.05 * size,
             )
+
+        off = m1_outer_diameter * 0.45
+        ax.annotate("x", xy=(1.0 - off, 0 - off), xytext=(-0.5 - off, 0 - off),
+            arrowprops=dict(arrowstyle="->"), ha="center", va="center",) 
+        ax.annotate("y", xy=(0 - off, 1.0 - off), xytext=(0 - off, -0.5 - off),
+            arrowprops=dict(arrowstyle="->"), ha="center", va="center",) 
 
     ax.axis("equal")
     ax.set_title(title)
