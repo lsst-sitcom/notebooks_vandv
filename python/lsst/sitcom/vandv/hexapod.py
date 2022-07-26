@@ -1,7 +1,8 @@
 import asyncio
+import logging
+import os
 
 import numpy as np
-import os
 import pandas as pd
 import yaml
 
@@ -12,6 +13,9 @@ __all__ = [
     "print_hexapod_compensation_values",
     "print_hexapod_uncompensation_values",
 ]
+
+
+log = logging.getLogger(__name__)
 
 
 async def check_hexapod_lut(component, timeout=10.0):
@@ -161,10 +165,10 @@ async def print_predicted_compensation(elevCoeff, elev):
         pred.append(mypoly(elev))
     print(" ".join(f"{p:10.2f}" for p in pred))
 
-    
-def timeline_position(ax, dfs, column="z", elevation=None):
+
+def timeline_position(ax, dfs, column="z", elevation=None, symbols=None, names=None):
     """Show the Camera/M2 Hexapod positions as a timeline.
-    
+
     Parameters
     ----------
     ax : matplotlib.Axes
@@ -174,25 +178,51 @@ def timeline_position(ax, dfs, column="z", elevation=None):
     column : str
         What axis to plot.
         Default: "z"
+    symbols : list of str
+        List of matplotlib symbols that will be applied to each plot.
+        It can also be a combination of color symbols like "C0o-".
+    names : list of str
+        List of labels for each line.
     """
     column = column.lower()
-    symbols = ["o", "s", "+", "x"]
-    
+
+    # Validate Inputs
     if column in "xyz":
         unit = "um"
     elif column in "uvw":
         unit = "urad"
-    else: 
+    else:
         raise ValueError("Expected column to be x/y/z or u/v/w")
-    
-    for i, df in enumerate(dfs):
-        s = symbols[i]
-        ax.plot(df[column], f"{s}-")
-        
+
+    if symbols:
+        if len(symbols) != len(dfs):
+            raise ValueError(
+                "Expected number of elements in `dfs` and in `symbols` to be the same."
+            )
+    else:
+        symbols = [""] * len(dfs)
+
+    if names:
+        if len(names) != len(dfs):
+            raise ValueError(
+                "Expected number of elements in `dfs` and in `names` to be the same."
+            )
+    else:
+        names = [""] * len(dfs)
+
+    # Plot Data
+    for i, (df, s, name) in enumerate(zip(dfs, symbols, names)):
+        s = "-" if s == "" else s
+        try:
+            ax.plot(df[column], f"{s}", label=name)
+        except KeyError:
+            log.warning(f"Column {column} not found in {i}-th dataframe {name}")
+
+    # Customize Axis
     ax.grid(":", alpha=0.2)
     ax.set_xlabel("Time")
     ax.set_ylabel(f"{column}\n [{unit}]")
-    
+
     if elevation is not None:
         el = elevation["actualPosition"].dropna()
         ax_twin = ax.twinx()
@@ -201,6 +231,18 @@ def timeline_position(ax, dfs, column="z", elevation=None):
             el.min() - 0.1 * el.values.ptp(), el.max() + 0.1 * el.values.ptp()
         )
         ax_twin.set_ylabel("Elevation\n [deg]")
-    
+
     return ax
 
+
+def get_lut_positions(index, elevation, lut_path=None):
+    """Get the x/y/z/u/v/w position for an hexapod given the elevation angle"""
+    elevCoeff, tempCoeff = coeffs_from_lut(index=index, lut_path=lut_path)
+
+    pos = [np.zeros_like(elevation)] * 6
+    for i in range(6):
+        coeff = elevCoeff[i]  # starts with C0
+        mypoly = np.polynomial.Polynomial(coeff)
+        pos[i] = mypoly(elevation)
+
+    return np.array(pos).T

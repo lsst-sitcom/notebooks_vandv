@@ -11,8 +11,10 @@ from lsst.ts import utils
 try:
     from lsst.rsp import get_node
 except ModuleNotFoundError:
-    warnings.warn("Could not find package: lsst.rsp"
-                  " - the node information will not be available")
+    warnings.warn(
+        "Could not find package: lsst.rsp"
+        " - the node information will not be available"
+    )
     get_node = lambda: "(not available)"
 
 
@@ -47,7 +49,9 @@ class ExecutionInfo:
 
         # This is used later to define where Butler stores the images or
         # to define which EFD client to use
-        self.loc = os.getenv("LSST_DDS_PARTITION_PREFIX", "(LSST_DDS_PARTITION_PREFIX does not exist)") 
+        self.loc = os.getenv(
+            "LSST_DDS_PARTITION_PREFIX", "(LSST_DDS_PARTITION_PREFIX does not exist)"
+        )
         self.node = get_node()
 
         # Create folder for plots
@@ -79,21 +83,21 @@ class ExecutionInfo:
         """
         return int(test_case[-4:] + test_execution[-4:])
 
-    
-def check_last_evt(event): 
+
+def check_last_evt(event):
     """Check the last event
-    
+
     Parameters
     ----------
     event : SAL Event
     """
     evt = event.get()
-    
+
     if evt is None:
         logging.warning(f"{event} returned None")
     else:
         evt_time = Time(evt.private_sndStamp, format="unix", scale="tai")
         evt_time.format = "iso"
         logging.info(f"\n {event} last logevent at {evt_time.utc} is \n \t{evt}")
-    
+
     return evt

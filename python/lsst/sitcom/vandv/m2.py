@@ -470,6 +470,8 @@ def snapshot_zforces_overview(
                 fontsize=fs,
             )
 
+        ax.annotate("x", xy=(0.5, 0), xytext=(0, 0), arrowprops=dict(arrowstyle="->"))
+
     ax.axis("equal")
     ax.set_title(f"{prefix} axial forces")
     ax.set_axis_off()

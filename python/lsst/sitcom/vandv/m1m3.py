@@ -527,8 +527,8 @@ def snapshot_zforces_overview(
     fat = np.array(M1M3FATable.FATABLE)
 
     ids = fat[idxs, M1M3FATable.FATABLE_ID]
-    xact = np.float64(fat[idxs, M1M3FATable.FATABLE_XPOSITION])
-    yact = np.float64(fat[idxs, M1M3FATable.FATABLE_YPOSITION])
+    xact = -np.float64(fat[idxs, M1M3FATable.FATABLE_XPOSITION])
+    yact = -np.float64(fat[idxs, M1M3FATable.FATABLE_YPOSITION])
 
     data = series[cols]
     im = ax.scatter(xact, yact, c=data, s=size)
