@@ -1,7 +1,8 @@
 import asyncio
+import logging
+import os
 
 import numpy as np
-import os
 import pandas as pd
 import yaml
 
@@ -12,6 +13,9 @@ __all__ = [
     "print_hexapod_compensation_values",
     "print_hexapod_uncompensation_values",
 ]
+
+
+log = logging.getLogger(__name__)
 
 
 async def check_hexapod_lut(component, timeout=10.0):
@@ -161,25 +165,84 @@ async def print_predicted_compensation(elevCoeff, elev):
         pred.append(mypoly(elev))
     print(" ".join(f"{p:10.2f}" for p in pred))
 
-    
-async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=None, lut_path=None, index=1):
-    """Plots an snashot of the current hexapod status using the
-    most recent data within the time range that was published to the
-    EFD.
+
+def timeline_position(ax, dfs, column="z", elevation=None, symbols=None, names=None):
+    """Show the Camera/M2 Hexapod positions as a timeline.
 
     Parameters
     ----------
-    client : lsst_efd_client.EfdClient
-        A live connection to the EFD.
-    lower_t : `astropy.time.Time`, optional
-        Lower time used in the query. (default: `upper_t - 15m`)
-    upper_t : `astropy.time.Time`, optional
-        Upper time used in the query. (default: `Time.now()`)
-    execution : str, optional
-        Test execution id (e.g. LVV-EXXXX).
-    lut_path : str, optional
-        Alternative path to a local copy of the `lsst-sitcom/M2_FEA` repository.
-    index : int, optional
-        SAL Index used to select either the Camera Hexapod (1) or the M2 Hexapod (2)
+    ax : matplotlib.Axes
+        Axes that will hold the plot.
+    dfs : list of pd.DataFrame
+        List of dataframes containing the positions.
+    column : str
+        What axis to plot.
+        Default: "z"
+    symbols : list of str
+        List of matplotlib symbols that will be applied to each plot.
+        It can also be a combination of color symbols like "C0o-".
+    names : list of str
+        List of labels for each line.
     """
-    pass
+    column = column.lower()
+
+    # Validate Inputs
+    if column in "xyz":
+        unit = "um"
+    elif column in "uvw":
+        unit = "urad"
+    else:
+        raise ValueError("Expected column to be x/y/z or u/v/w")
+
+    if symbols:
+        if len(symbols) != len(dfs):
+            raise ValueError(
+                "Expected number of elements in `dfs` and in `symbols` to be the same."
+            )
+    else:
+        symbols = [""] * len(dfs)
+
+    if names:
+        if len(names) != len(dfs):
+            raise ValueError(
+                "Expected number of elements in `dfs` and in `names` to be the same."
+            )
+    else:
+        names = [""] * len(dfs)
+
+    # Plot Data
+    for i, (df, s, name) in enumerate(zip(dfs, symbols, names)):
+        s = "-" if s == "" else s
+        try:
+            ax.plot(df[column], f"{s}", label=name)
+        except KeyError:
+            log.warning(f"Column {column} not found in {i}-th dataframe {name}")
+
+    # Customize Axis
+    ax.grid(":", alpha=0.2)
+    ax.set_xlabel("Time")
+    ax.set_ylabel(f"{column}\n [{unit}]")
+
+    if elevation is not None:
+        el = elevation["actualPosition"].dropna()
+        ax_twin = ax.twinx()
+        ax_twin.fill_between(el.index, 0, el, fc="black", alpha=0.1)
+        ax_twin.set_ylim(
+            el.min() - 0.1 * el.values.ptp(), el.max() + 0.1 * el.values.ptp()
+        )
+        ax_twin.set_ylabel("Elevation\n [deg]")
+
+    return ax
+
+
+def get_lut_positions(index, elevation, lut_path=None):
+    """Get the x/y/z/u/v/w position for an hexapod given the elevation angle"""
+    elevCoeff, tempCoeff = coeffs_from_lut(index=index, lut_path=lut_path)
+
+    pos = [np.zeros_like(elevation)] * 6
+    for i in range(6):
+        coeff = elevCoeff[i]  # starts with C0
+        mypoly = np.polynomial.Polynomial(coeff)
+        pos[i] = mypoly(elevation)
+
+    return np.array(pos).T

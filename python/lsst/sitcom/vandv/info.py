@@ -1,12 +1,21 @@
 import asyncio
 import logging
 import os
+import warnings
 
 import pandas as pd
 from astropy.time import Time
 
 from lsst.ts import utils
-from lsst.rsp import get_node
+
+try:
+    from lsst.rsp import get_node
+except ModuleNotFoundError:
+    warnings.warn(
+        "Could not find package: lsst.rsp"
+        " - the node information will not be available"
+    )
+    get_node = lambda: "(not available)"
 
 
 __all__ = [
@@ -32,7 +41,7 @@ class ExecutionInfo:
 
     def __init__(self):
         # Extract your name from the Jupyter Hub
-        self.user = os.environ["JUPYTERHUB_USER"]
+        self.user = os.getenv("JUPYTERHUB_USER", "(JUPYTERHUB_USER does not exist)")
 
         # Extract execution date
         self.date = utils.astropy_time_from_tai_unix(utils.current_tai())
@@ -40,7 +49,9 @@ class ExecutionInfo:
 
         # This is used later to define where Butler stores the images or
         # to define which EFD client to use
-        self.loc = os.environ["LSST_DDS_PARTITION_PREFIX"]
+        self.loc = os.getenv(
+            "LSST_DDS_PARTITION_PREFIX", "(LSST_DDS_PARTITION_PREFIX does not exist)"
+        )
         self.node = get_node()
 
         # Create folder for plots
@@ -72,17 +83,21 @@ class ExecutionInfo:
         """
         return int(test_case[-4:] + test_execution[-4:])
 
-    
-def check_last_evt(event): 
+
+def check_last_evt(event):
     """Check the last event
-    
+
     Parameters
     ----------
     event : SAL Event
     """
     evt = event.get()
-    evt_time = Time(evt.private_sndStamp, format="unix", scale="tai")
-    evt_time.format = "iso"
-    logging.info(f"\n {event} last logevent at {evt_time.utc} is \n \t{evt}")
-    
+
+    if evt is None:
+        logging.warning(f"{event} returned None")
+    else:
+        evt_time = Time(evt.private_sndStamp, format="unix", scale="tai")
+        evt_time.format = "iso"
+        logging.info(f"\n {event} last logevent at {evt_time.utc} is \n \t{evt}")
+
     return evt
