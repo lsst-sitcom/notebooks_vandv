@@ -21,6 +21,7 @@ except ModuleNotFoundError:
 __all__ = [
     "ExecutionInfo",
     "check_last_evt",
+    "get_index",
 ]
 
 
@@ -63,26 +64,6 @@ class ExecutionInfo:
             f"\n  Running in {self.node} at {self.loc}\n"
         )
 
-    @staticmethod
-    def get_index(test_case, test_execution):
-        """Returns an integer obtained from the four last digits of the test
-        case concatenated with the last four digits of the test execution
-        so it can be used as an index for the `salobj.Controller("Script")`,
-        normally used to send custom messages to the EFD.
-
-        Parameters
-        ----------
-        test_case : str
-            ID of the test case being run.
-        test_execution : str
-            ID of the test execution being run.
-
-        Returns
-        -------
-        int : index to be used in a SAL Script.
-        """
-        return int(test_case[-4:] + test_execution[-4:])
-
 
 def check_last_evt(event):
     """Check the last event
@@ -101,3 +82,29 @@ def check_last_evt(event):
         logging.info(f"\n {event} last logevent at {evt_time.utc} is \n \t{evt}")
 
     return evt
+
+
+def get_index(test_case):
+    """Returns an integer obtained from the four last digits of the test
+    case concatenated with the MM month and the DD day.
+
+    This way, it can be used as an index for the
+    `salobj.Controller("Script")`, normally used to send custom messages
+    to the EFD.
+
+    The index will be negative to avoid conflicts with the ScriptQueue.
+
+    Parameters
+    ----------
+    test_case : str
+        ID of the test case being run.
+
+    Returns
+    -------
+    int : index to be used in a SAL Script.
+    """
+    today = Time.now()
+    index = int(f"-{test_case[-4:]}{today.strftime('%m%d')}")
+    print(f"\n  Using script index: {index}\n")
+
+    return index
