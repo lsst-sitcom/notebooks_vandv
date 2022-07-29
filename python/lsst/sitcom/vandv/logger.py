@@ -8,7 +8,8 @@ __all__ = [
 
 
 def add_filter_to_mtcs():
-
+    """Adds two filters to the main telescope CSCSs to avoid the
+    multiple messages related to the DDS"""
     loggers = [
         logging.getLogger(name)
         for name in logging.root.manager.loggerDict
