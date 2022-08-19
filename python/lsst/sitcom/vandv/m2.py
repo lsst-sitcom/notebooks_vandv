@@ -397,6 +397,7 @@ def snapshot_zforces_overview(
     ax,
     series,
     prefix="measured",
+    title="", 
     show_ids=True,
     show_mirrors=True,
     lut_path=None,
@@ -476,7 +477,9 @@ def snapshot_zforces_overview(
             arrowprops=dict(arrowstyle="->"), ha="center", va="center",) 
 
     ax.axis("equal")
-    ax.set_title(f"{prefix} axial forces")
+    ax.set_title(title)
+
+    #ax.set_title(f"{prefix} axial forces")
     ax.set_axis_off()
 
     divider = make_axes_locatable(ax)
