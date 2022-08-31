@@ -397,6 +397,7 @@ def snapshot_zforces_overview(
     ax,
     series,
     prefix="measured",
+    title=None, 
     show_ids=True,
     show_mirrors=True,
     lut_path=None,
@@ -488,7 +489,9 @@ def snapshot_zforces_overview(
         )
 
     ax.axis("equal")
-    ax.set_title(f"{prefix} axial forces")
+    title = title if title else f"{prefix} axial forces"
+    ax.set_title(title)
+
     ax.set_axis_off()
 
     divider = make_axes_locatable(ax)
