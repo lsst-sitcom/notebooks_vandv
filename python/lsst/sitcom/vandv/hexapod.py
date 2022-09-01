@@ -99,9 +99,11 @@ async def print_hexapod_uncompensation_values(component, timeout=10.0):
     """Prints out the hexapod unconpensation values."""
     posU = await component.evt_uncompensatedPosition.aget(timeout=10.0)
     print("Uncompensated position")
-    print(" ".join(f"{p:10.2f}" for p in [getattr(posU, i) for i in "xyz"]), end="    ")
     print(
-        " ".join(f"{p:10.6f}" for p in [getattr(posU, i) for i in "uvw"]),
+        " ".join(f"{p:10.2f} um" for p in [getattr(posU, i) for i in "xyz"]), end="    "
+    )
+    print(
+        " ".join(f"{p:10.6f} deg" for p in [getattr(posU, i) for i in "uvw"]),
         "  ",
         pd.to_datetime(posU.private_sndStamp, unit="s"),
     )
