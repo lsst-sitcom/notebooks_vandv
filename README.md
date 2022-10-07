@@ -64,7 +64,7 @@ git clone https://github.com/lsst-sitcom/M2_FEA $HOME/notebooks/lsst-sitcom/M2_F
 
 If you use a different path for these repositories, make sure that you pass this path when running the associated functions.  
   
-And add these lines to your `$HOME/notebooks/.user_setup` file:  
+And add these lines to your `$HOME/notebooks/.user_setups` file:  
 
 ```
 export LSST_DDS_DOMAIN_ID=0
