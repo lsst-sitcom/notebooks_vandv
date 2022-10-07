@@ -84,7 +84,7 @@ def check_last_evt(event):
     return evt
 
 
-def get_index(test_case):
+def get_index(test_case, dtime=None):
     """Returns an integer obtained from the four last digits of the test
     case concatenated with the MM month and the DD day.
 
@@ -98,13 +98,15 @@ def get_index(test_case):
     ----------
     test_case : str
         ID of the test case being run.
+    dtime: astropy.time.Time, optional
+        Date and Time in ISOT format and in UTC scale. Default: Time.now()
 
     Returns
     -------
     int : index to be used in a SAL Script.
     """
-    today = Time.now()
-    index = int(f"-{test_case[-4:]}{today.strftime('%m%d')}")
+    dtime = dtime if dtime else Time.now() 
+    index = int(f"-{test_case[-4:]}{dtime.strftime('%m%d')}")
     print(f"\n  Using script index: {index}\n")
 
     return index
