@@ -13,7 +13,7 @@ def add_filter_to_mtcs():
     loggers = [
         logging.getLogger(name)
         for name in logging.root.manager.loggerDict
-        if name.startswith("MT")
+        if name.startswith("MT") or name.startswith("CC")
     ]
 
     for logger in loggers:
