@@ -5,4 +5,5 @@ from . import m1m3
 from . import m2
 from . import mount
 from . import mtaos
+from . import slew_and_track
 from .info import *
