@@ -124,7 +124,7 @@ def random_walk_azel_by_time(total_time,
         
     step = 0
     timer_task = asyncio.create_task(asyncio.sleep(total_time))
-    logger.info(f"{'Time':25s}{'Steps':>10s}{'New Az':>10s}{'New El':>10s}")
+    logger.info(f"{'Time':25s}{'Steps':>10s}{'Old Az':>10s}{'Old El':>10s}"{'New Az':>10s}{'New El':>10s}")
     
     while not timer_task.done():
         
@@ -148,7 +148,7 @@ def random_walk_azel_by_time(total_time,
 
         t = Time.now().to_value("isot")
         logger.info(
-            f"{t:25s}{step:10d}{new_az:10.2f}{new_el:10.2f}")
+            f"{t:25s}{step:10d}{old_az:10.2f}{old_el:10.2f}{new_az:10.2f}{new_el:10.2f}")
 
         yield new_az, new_el
         step += 1
