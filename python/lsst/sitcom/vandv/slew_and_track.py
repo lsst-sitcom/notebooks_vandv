@@ -25,8 +25,7 @@ def azel_grid_by_time(total_time, _az_grid, _el_grid, logger=None):
     
     step = 0
     timer_task = asyncio.create_task(asyncio.sleep(total_time))
-    #logger.info(f"{'Time':25s}{'Steps':>10s}{'New Az':>10s}{'New El':>10s}")
-    logger.info(f"{'Time':25s}{'Steps':>10s}")
+    logger.info(f"{'Time':25s}{'Steps':>10s}{'Old Az':>10s}{'New Az':>10s}{'Old El':>10s}{'New El':>10s}")
 
     generator = generate_azel_sequence(_az_grid, _el_grid)
     old_az, old_el = None, None
@@ -41,7 +40,9 @@ def azel_grid_by_time(total_time, _az_grid, _el_grid, logger=None):
         yield new_az, new_el
         
         t = Time.now().to_value("isot")
-        logger.info(f"{t:25s}{step:10d}{new_az:10.2f}{new_el:10.2f}")
+        
+        if old_az and old_el:
+            logger.info(f"{t:25s}{step:10d}{old_az:10.2f}{new_az:10.2f}{old_el:10.2f}{new_el:10.2f}")
 
         old_az, old_el = new_az, new_el
         step += 1
@@ -125,20 +126,17 @@ def random_walk_azel_by_time(total_time,
         
     step = 0
     timer_task = asyncio.create_task(asyncio.sleep(total_time))
-    #logger.info(f"{'Time':25s}{'Steps':>10s}{'Old Az':>10s}{'Old El':>10s}"{'New Az':>10s}{'New El':>10s}")
-    logger.info(f"{'Time':25s}{'Steps':>10s}{'Old Az':>10s}") #{'Old El':>10s}"{'New Az':>10s}{'New El':>10s}")
+    logger.info(f"{'Time':25s}{'Steps':>10s}{'Old Az':>10s}{'New Az':>10s}{'Old El':>10s}{'New El':>10s}")
+    
+    n_points = 10
+    current_az = np.median([mtmount.tel_azimuth.get().actualPosition for i in range(n_points)])
+    current_el = np.median([mtmount.tel_elevation.get().actualPosition for i in range(n_points)])
 
     while not timer_task.done():
         
-        current_az = mtmount.tel_azimuth.get()
-        current_az = current_az.actualPosition
-        # current_az = _az
         offset_az = np.sqrt(radius) * (2 * np.random.rand() - 1)
         new_az = current_az + offset_az
                 
-        current_el = mtmount.tel_elevation.get()
-        current_el = current_el.actualPosition
-        # current_el = _el
         offset_el = np.sqrt(radius) * (2 * np.random.rand() - 1)
         new_el = current_el + offset_el
         
@@ -149,10 +147,8 @@ def random_walk_azel_by_time(total_time,
             new_el = current_el - offset_el
 
         t = Time.now().to_value("isot")
-        logger.info(
-            f"{t:25s}{step:10d}{new_az:10.2f}{new_el:10.2f}")
-        # logger.info(
-        #     f"{t:25s}{step:10d}{old_az:10.2f}{old_el:10.2f}{new_az:10.2f}{new_el:10.2f}")
+        logger.info(f"{t:25s}{step:10d}{current_az:10.2f}{new_az:10.2f}{current_el:10.2f}{new_el:10.2f}")
 
         yield new_az, new_el
         step += 1
+        current_az, current_el = new_az, new_el
