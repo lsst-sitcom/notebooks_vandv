@@ -99,6 +99,8 @@ def random_walk_azel_by_time(total_time,
                              min_el=30, 
                              max_el=80, 
                              logger=None,
+                             big_slew_prob=0.05,
+                             big_slew_radius=7.0,
                             ):
     """
     Generate Az/El coordinates for a a long time so we can slew and track 
@@ -133,6 +135,10 @@ def random_walk_azel_by_time(total_time,
     current_el = np.median([mtmount.tel_elevation.get().actualPosition for i in range(n_points)])
 
     while not timer_task.done():
+        
+        radius = (big_slew_radius 
+                  if np.random.rand() <= big_slew_prob 
+                  else radius)
         
         offset_az = np.sqrt(radius) * (2 * np.random.rand() - 1)
         new_az = current_az + offset_az
