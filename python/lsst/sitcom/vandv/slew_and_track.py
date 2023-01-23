@@ -140,10 +140,11 @@ def random_walk_azel_by_time(total_time,
                           if np.random.rand() <= big_slew_prob 
                           else radius)
         
-        offset_az = np.sqrt(current_radius * (2 * np.random.rand() - 1)
+        sign = 1 if np.random.rand() > 0.5 else -1
+        offset_az = sign * np.sqrt(current_radius * np.abs(2 * np.random.rand() - 1))
         new_az = current_az + offset_az
                 
-        offset_el = np.sqrt(current_radius) * (2 * np.random.rand() - 1)
+        offset_el = sign * np.sqrt(current_radius * np.abs(2 * np.random.rand() - 1))
         new_el = current_el + offset_el
         
         if new_az <= min_az or new_az >= max_az:
