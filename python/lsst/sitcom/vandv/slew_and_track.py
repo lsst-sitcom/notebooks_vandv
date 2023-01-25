@@ -128,7 +128,7 @@ def random_walk_azel_by_time(total_time,
         
     step = 0
     timer_task = asyncio.create_task(asyncio.sleep(total_time))
-    logger.info(f"{'Time':25s}{'Steps':>10s}{'Old Az':>10s}{'New Az':>10s}{'Old El':>10s}{'New El':>10s}")
+    logger.info(f"{'Time':25s}{'Steps':>10s}{'Old Az':>10s}{'New Az':>10s}{'Old El':>10s}{'New El':>10s}{'Offset':>10s}")
     
     n_points = 10
     current_az = np.median([mtmount.tel_azimuth.get().actualPosition for i in range(n_points)])
@@ -140,11 +140,12 @@ def random_walk_azel_by_time(total_time,
                           if np.random.rand() <= big_slew_prob 
                           else radius)
         
-        sign = 1 if np.random.rand() > 0.5 else -1
-        offset_az = sign * np.sqrt(current_radius * np.abs(2 * np.random.rand() - 1))
+        angle = 2 * np.pi * np.random.rand()
+        
+        offset_az = current_radius * np.cos(angle)
         new_az = current_az + offset_az
                 
-        offset_el = sign * np.sqrt(current_radius * np.abs(2 * np.random.rand() - 1))
+        offset_el = current_radius * np.sin(angle)
         new_el = current_el + offset_el
         
         if new_az <= min_az or new_az >= max_az:
@@ -152,9 +153,11 @@ def random_walk_azel_by_time(total_time,
             
         if new_el <= min_el or new_el >= max_el:
             new_el = current_el - offset_el
+            
+        offset = np.sqrt((current_az - new_az) ** 2 + (current_el - new_el) ** 2)
 
         t = Time.now().to_value("isot")
-        logger.info(f"{t:25s}{step:10d}{current_az:10.2f}{new_az:10.2f}{current_el:10.2f}{new_el:10.2f}")
+        logger.info(f"{t:25s}{step:10d}{current_az:10.2f}{new_az:10.2f}{current_el:10.2f}{new_el:10.2f}{offset:10.2f}")
 
         yield new_az, new_el
         step += 1
