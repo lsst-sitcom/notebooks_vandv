@@ -28,14 +28,16 @@ def create_efd_client():
         warnings.warn("EFD Client not available")
         return None
 
-    location = os.environ["LSST_DDS_PARTITION_PREFIX"]
+    url = os.environ["EXTERNAL_INSTANCE_URL"]
 
-    if location == "summit":
+    if url == "https://summit-lsp.lsst.codes":
         client = EfdClient("summit_efd")
-    elif location == "tucson":
+    elif url == "https://tucson-teststand.lsst.codes":
         client = EfdClient("tucson_teststand_efd")
+    elif url == "https://usdf-rsp.slac.stanford.edu":
+        client = EfdClient("usdf_efd")
     else:
-        raise ValueError("Location does not match any valid options {summit|tucson}")
+        raise ValueError("Location does not match any valid options {summit|tucson|usdf}")
 
     return client
 
