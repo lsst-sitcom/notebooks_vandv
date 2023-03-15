@@ -16,6 +16,7 @@ However this is simply a recommendation and you are free to organize your folder
 ## Notebooks
 
 User notebooks should be stored in the notebooks directory.
+Please, remember to stop the Kernel and clean all the notebooks outputs before comitting and pushing them to GitHub.
 The folder structure inside the `notebooks` directory should approximately reflect the organization in Zephyr JIRA.
 The folder/file organization is not set on stone, but one should consider how easy is to find the Notebook counterpart of a Test Case when placing it somewhere.
 
@@ -26,11 +27,14 @@ Instead, replace spaces with underlines (`_`).
 
 For example, you can find the [LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction] notebook counterpart in `notebooks/proj_sys_eng/SIT-COM_Integration/LVV-T2229-Closed_Loop.ipynb`.  
 
-[LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction]: https://jira.lsstcorp.org/secure/Tests.jspa#/testCase/LVV-T2229
-
 A sub-folder should have at least five notebooks within it to justify its existence.  
 Otherwise, simply add the notebooks in the current folder.  
 This avoid having multiple sub-folders with very few files within them and make it easier to find the files.
+
+Data-analysis notebooks should live in the same folder as the data-acquisition notebooks.  
+Data-analysis notebooks should have the following filename `LVV-TXXXX_analysis.ipynb`, where `LVV-TXXXX` is the associated test case.  
+
+[LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction]: https://jira.lsstcorp.org/secure/Tests.jspa#/testCase/LVV-T2229
 
 ## Requirements
 
