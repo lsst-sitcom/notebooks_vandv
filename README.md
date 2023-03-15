@@ -32,7 +32,7 @@ Otherwise, simply add the notebooks in the current folder.
 This avoid having multiple sub-folders with very few files within them and make it easier to find the files.
 
 Data-analysis notebooks should live in the same folder as the data-acquisition notebooks.  
-Data-analysis notebooks should have the following filename `LVV-TXXXX_analysis.ipynb`, where `LVV-TXXXX` is the associated test case.  
+Data-analysis notebooks should have the following filename `LVV-TXXXX-analysis.ipynb`, where `LVV-TXXXX` is the associated test case.  
 
 [LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction]: https://jira.lsstcorp.org/secure/Tests.jspa#/testCase/LVV-T2229
 
