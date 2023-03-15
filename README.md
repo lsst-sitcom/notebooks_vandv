@@ -16,7 +16,7 @@ However this is simply a recommendation and you are free to organize your folder
 ## Notebooks
 
 User notebooks should be stored in the notebooks directory.
-Please, remember to stop the Kernel and clean all the notebooks outputs before comitting and pushing them to GitHub.
+Please, remember to stop the Kernel and clean all the notebooks outputs before committing and pushing them to GitHub.
 The folder structure inside the `notebooks` directory should approximately reflect the organization in Zephyr JIRA.
 The folder/file organization is not set on stone, but one should consider how easy is to find the Notebook counterpart of a Test Case when placing it somewhere.
 
