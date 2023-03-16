@@ -263,7 +263,6 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
 
     fx, fy, fz = {}, {}, {}
     for key, topic in forces.items():
-
         print(f"Query {topic}")
         await asyncio.sleep(1)
 

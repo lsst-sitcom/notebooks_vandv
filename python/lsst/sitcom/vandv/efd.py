@@ -37,7 +37,9 @@ def create_efd_client():
     elif url == "https://usdf-rsp.slac.stanford.edu":
         client = EfdClient("usdf_efd")
     else:
-        raise ValueError("Location does not match any valid options {summit|tucson|usdf}")
+        raise ValueError(
+            "Location does not match any valid options {summit|tucson|usdf}"
+        )
 
     return client
 

@@ -105,7 +105,7 @@ def get_index(test_case, dtime=None):
     -------
     int : index to be used in a SAL Script.
     """
-    dtime = dtime if dtime else Time.now() 
+    dtime = dtime if dtime else Time.now()
     index = int(f"-{test_case[-4:]}{dtime.strftime('%m%d')}")
     print(f"\n  Using script index: {index}\n")
 

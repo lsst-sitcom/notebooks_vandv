@@ -397,7 +397,7 @@ def snapshot_zforces_overview(
     ax,
     series,
     prefix="measured",
-    title=None, 
+    title=None,
     show_ids=True,
     show_mirrors=True,
     lut_path=None,
