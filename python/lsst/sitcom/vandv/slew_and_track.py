@@ -239,7 +239,7 @@ async def take_images_in_sync(
     """
     assert len(_camera_list) == len(_exposure_times)
 
-    wait_time = asyncio.create_task(asyncio.sleep(total_time))
+    wait_time = asyncio.create_task(asyncio.sleep(total_time - max(exptimes))
 
     for n in range(_number_of_exposures):
         tasks = [
@@ -300,16 +300,3 @@ async def take_images_with_sleep(cam, exptime, reason, sleep):
     """
     await cam.take_object(exptime, reason=reason)
     await asyncio.sleep(sleep)
-
-
-async def wait_for_dome_in_position():
-    """Wait until the dome is in position"""
-    await asyncio.sleep(20)
-    azMotion = await mtcs.rem.mtdome.evt_azMotion.aget()
-
-    while not azMotion.inPosition:
-        azMotion = await mtcs.rem.mtdome.evt_azMotion.aget()
-        await asyncio.sleep(5.0)
-
-    if azMotion.state == 1.0:
-        await mtcs.rem.mtdome.cmd_exitFault.set_start()
