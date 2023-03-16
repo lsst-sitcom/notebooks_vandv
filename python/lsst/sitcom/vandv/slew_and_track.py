@@ -5,6 +5,15 @@ import numpy as np
 
 from astropy.time import Time
 
+__all__ = [
+    "azel_grid_by_time",
+    "generate_azel_sequence", 
+    "random_walk_azel_by_time",
+    "take_images_for_time",
+    "take_images_in_sync",
+    "take_images_in_sync_for_time", 
+]
+
 
 def azel_grid_by_time(total_time, _az_grid, _el_grid, logger=None):
     """
@@ -48,7 +57,7 @@ def azel_grid_by_time(total_time, _az_grid, _el_grid, logger=None):
         step += 1
         
 
-def generate_azel_sequence(az_seq, el_seq):
+def generate_azel_sequence(az_seq, el_seq, el_limit=90):
     """A generator that cicles through the input azimuth and elevation sequences
     forward and backwards.
     
@@ -57,7 +66,9 @@ def generate_azel_sequence(az_seq, el_seq):
     az_seq : `list` [`float`]
         A sequence of azimuth values to cicle through
     el_seq : `list` [`float`]
-        A sequence of elevation values to cicle through     
+        A sequence of elevation values to cicle through
+    el_limit : `float`
+        Cut off limit angle in elevation to skip points when going down. 
     Yields
     ------
     `list`
@@ -82,13 +93,14 @@ def generate_azel_sequence(az_seq, el_seq):
     >>> next(seq_gen)
     [0, 15]
     """
-    i, j = 1, 1
-    while True:
-        for az in az_seq[::j]:
-            for el in el_seq[::i]:
+    i = 1
+    for az in az_seq:
+        for el in el_seq[::i]:
+            if el > el_limit and i == -1:
+                continue
+            else:
                 yield (az, el)
-            i *= -1
-        j *= -1
+        i *= -1
         
                 
 def random_walk_azel_by_time(total_time, 
@@ -162,3 +174,123 @@ def random_walk_azel_by_time(total_time,
         yield new_az, new_el
         step += 1
         current_az, current_el = new_az, new_el
+
+        
+async def take_images_for_time(cam, exptime, reason, tracktime):
+    """ Takes images while tracking for some time. (not in sync)
+    
+    Parameters
+    ----------
+    cam : `lsst.ts.observatory.control.base_camera.BaseCamera`
+        Contains a camera instance. 
+    exptime : `float`
+        The exposure time.
+    reason : `str`
+        Reason passed to the `take_object` command.
+    tracktime : `float`
+        How long will we be tracking?
+        
+    Returns
+    -------
+    int : number of images obtained.
+    """ 
+    reason = reason.replace(" ", "_")
+    timer_task = asyncio.create_task(asyncio.sleep(tracktime - exptime))
+    n_images = 0
+
+    while not timer_task.done():
+        await cam.take_object(exptime, reason=reason)
+        await asyncio.sleep(0.5)
+        n_images += 1
+        
+    return n_images
+
+
+async def take_images_in_sync(_camera_list, _exposure_times, _number_of_exposures, _reason, total_time): 
+    """
+    Take images in sync, which means keeping the images ID the same. 
+    This will increase overhead on the camera with shorter exposure time.
+    
+    Parameters
+    ----------
+    _camera_list : list of `GenericCamera`
+        A list containing the `GenericCamera` for each Camera.
+    _exposure_times : list of float 
+        A list containing the exposure time used on each camera.
+    _reason : str 
+        Reason that goes to the metadata in each image.
+    _number_of_exposures : float
+        Total number of exposures for each camera.
+    total_time : float
+        Minimum time we should spend taking images (to keep tracking in a fixed position).
+    """
+    assert len(_camera_list) == len(_exposure_times)
+
+    wait_time = asyncio.create_task(asyncio.sleep(total_time))
+    
+    for n in range(_number_of_exposures):
+        tasks = [asyncio.create_task(cam.take_object(exptime, reason=_reason)) 
+                 for (cam, exptime) in zip(_camera_list, _exposure_times)]
+        
+        # Wait until all the tasks are complete
+        await asyncio.gather(*tasks)
+        
+    await wait_time
+    
+        
+async def take_images_in_sync_for_time(cams, exptimes, reason, tracktime):
+    """ Takes images in sync while tracking for some time. 
+    
+    Parameters
+    ----------
+    cams : list of `lsst.ts.observatory.control.base_camera.BaseCamera`
+        A list containing a camera instance. 
+    exptimes : list of `float`
+        A list of exposure times.
+    reason : `str`
+        Reason passed to the `take_object` command.
+    tracktime : `float`
+        How long will we be tracking?
+    """
+    reason = reason.replace(" ", "_")
+    timer_task = asyncio.create_task(asyncio.sleep(tracktime - max(exptimes)))
+    n_images = 0
+
+    while not timer_task.done():
+        tasks = [asyncio.create_task(take_images_with_sleep(cam, exptime, reason, 0.5)) 
+                 for (cam, exptime) in zip(cams, exptimes)]
+        await asyncio.gather(*tasks)
+        
+    return n_images
+
+
+async def take_images_with_sleep(cam, exptime, reason, sleep):
+    """ Takes a single image with a generic camera and add a sleep 
+    after the task is complete.
+    
+    Parameters
+    ----------
+    cam : `lsst.ts.observatory.control.base_camera.BaseCamera`
+        Camera Instance
+    exptime : `float`
+        Exposure time
+    reason : `str`
+        Reason passed to the `take_object` command.
+    sleep : `float`
+        Sleep time in seconds after complete image.
+    """
+    await cam.take_object(exptime, reason=reason)
+    await asyncio.sleep(sleep)
+
+
+async def wait_for_dome_in_position():
+    """Wait until the dome is in position"""
+    await asyncio.sleep(20)
+    azMotion = await mtcs.rem.mtdome.evt_azMotion.aget()
+
+    while not azMotion.inPosition:
+        azMotion = await mtcs.rem.mtdome.evt_azMotion.aget()
+        await asyncio.sleep(5.)
+        
+    if azMotion.state == 1.:
+        await mtcs.rem.mtdome.cmd_exitFault.set_start()
