@@ -239,7 +239,7 @@ async def take_images_in_sync(
     """
     assert len(_camera_list) == len(_exposure_times)
 
-    wait_time = asyncio.create_task(asyncio.sleep(total_time - max(exptimes))
+    wait_time = asyncio.create_task(asyncio.sleep(total_time - max(exptimes)))
 
     for n in range(_number_of_exposures):
         tasks = [
