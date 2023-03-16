@@ -238,7 +238,7 @@ async def take_images_in_sync(_camera_list, _exposure_times, _number_of_exposure
     await wait_time
     
         
-async def take_images_in_sync_for_time(cams, exptimes, reason, tracktime):
+async def take_images_in_sync_for_time(cams, exptimes, reason, tracktime, sleep=0.5):
     """ Takes images in sync while tracking for some time. 
     
     Parameters
@@ -251,13 +251,15 @@ async def take_images_in_sync_for_time(cams, exptimes, reason, tracktime):
         Reason passed to the `take_object` command.
     tracktime : `float`
         How long will we be tracking?
+    sleep : `float`
+        Sleep time in seconds to compensate for readout time in the cameras. 
     """
     reason = reason.replace(" ", "_")
     timer_task = asyncio.create_task(asyncio.sleep(tracktime - max(exptimes)))
     n_images = 0
 
     while not timer_task.done():
-        tasks = [asyncio.create_task(take_images_with_sleep(cam, exptime, reason, 0.5)) 
+        tasks = [asyncio.create_task(take_images_with_sleep(cam, exptime, reason, sleep)) 
                  for (cam, exptime) in zip(cams, exptimes)]
         await asyncio.gather(*tasks)
         
