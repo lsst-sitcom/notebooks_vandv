@@ -5,6 +5,8 @@ import numpy as np
 
 from astropy.time import Time
 
+from . import efd
+
 __all__ = [
     "azel_grid_by_time",
     "generate_azel_sequence",
@@ -105,6 +107,27 @@ def generate_azel_sequence(az_seq, el_seq, el_limit=90):
                 yield (az, el)
         i *= -1
 
+        
+def get_slew_icrs_target(start, end):
+    """Returns a Pandas DataFrame containing the target Ra/Dec and the timestamps 
+    that correspond to the beginning of a new slew. 
+    
+    Every time that we run a `mtcs.slew_icrs` command, it sends a 
+    `cmd_raDecTarget` command to the `mtptg` component. We used it as a mark 
+    that defines the start of a slew. 
+    
+    Parameters
+    ----------
+    start : `astropy.time.Time`
+        Start time of the time range.
+    end : `astropy.time.Time` or `astropy.time.TimeDelta`
+        End time of the range either as an absolute time or
+        a time offset from the start time.
+    Returns
+    -------
+    
+    """
+    
 
 def random_walk_azel_by_time(
     total_time,
@@ -251,6 +274,32 @@ async def take_images_in_sync(
         await asyncio.gather(*tasks)
 
     await wait_time
+    
+
+async def take_images_in_sync_for_nexp(cams, exptimes, reason, nexps, sleep=0.5):
+    """Take images in sync while tracking until you get `nexps` exposures.
+    
+    Parameters
+    ----------
+    cams : list of `lsst.ts.observatory.control.base_camera.BaseCamera`
+        A list containing a camera instance.
+    exptimes : list of `float`
+        A list of exposure times.
+    reason : `str`
+        Reason passed to the `take_object` command.
+    tracktime : `float`
+        How long will we be tracking?
+    sleep : `float`
+        Sleep time in seconds to compensate for readout time in the cameras.
+    """
+    reason = reason.replace(" ", "_")
+
+    for i in range(nexps):
+        tasks = [
+            asyncio.create_task(take_images_with_sleep(cam, exptime, reason, sleep))
+            for (cam, exptime) in zip(cams, exptimes)
+        ]
+        await asyncio.gather(*tasks)
 
 
 async def take_images_in_sync_for_time(cams, exptimes, reason, tracktime, sleep=0.5):
