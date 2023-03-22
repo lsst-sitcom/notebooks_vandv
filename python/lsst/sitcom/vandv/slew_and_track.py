@@ -294,7 +294,7 @@ async def take_images_in_sync_for_nexp(cams, exptimes, reason, nexps, sleep=0.5)
     """
     reason = reason.replace(" ", "_")
 
-    for i in range(nexps):
+    for i in range(int(nexps)):
         tasks = [
             asyncio.create_task(take_images_with_sleep(cam, exptime, reason, sleep))
             for (cam, exptime) in zip(cams, exptimes)
