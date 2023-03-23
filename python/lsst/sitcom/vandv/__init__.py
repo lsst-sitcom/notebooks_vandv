@@ -1,3 +1,4 @@
+from . import accelerometer
 from . import efd
 from . import hexapod
 from . import logger
