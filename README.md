@@ -96,6 +96,28 @@ One way to setup this repo is to add the following to the `~/notebooks/.user_set
 You can replace `~/notebooks/lsst-sitcom/notebooks_vandv` with the directory where this file is located.
 
 
+## Developer Guide
+
+We will try to adopt most of the practices/workflow adopted by the Telecope and Site and Data-Management teams.  
+Here are the links for both of them:  
+  
+- https://tssw-developer.lsst.io/  
+- https://developer.lsst.io/  
+
+Here are a few quick points to keep an eye on:  
+  
+1. We want to follow [TS Development Workflow] (JIRA Ticket, new branch `ticket/PROJ-????`, Pull Request).  
+2. When writing documentation or text in notebooks, try to use [Semantic Like Breaks] for clarity.  
+3. For code standards, let's use the [PEP-8] as a reference.  
+4. When writing new plots/tools, consider the [Rule of Three] to avoid duplication/repetition.  
+
+[TS Development Workflow]: https://tssw-developer.lsst.io/procedures/development_workflow.html#development-workflow
+[Semantic Like Breaks]: https://sembr.org/
+[PEP-8]: https://peps.python.org/pep-0008/
+[Rule of Three]: https://en.wikipedia.org/wiki/Rule_of_three_(computer_programming)
+
+(more to come)
+
 ## Tests
 
 Unit tests should be stored in the tests directory.
