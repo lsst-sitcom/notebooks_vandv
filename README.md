@@ -44,11 +44,15 @@ Here is a list of which repos are required to run this notebook:
 * [lsst-ts/ts_cRIOpy]
 * [lsst-ts/ts_m1m3support]
 * [lsst-ts/ts_config_mttcs]
+* [lsst-sitcom/ts_utils]
+* [lsst-sitcom/ts_idl]
 * [lsst-sitcom/M2_FEA]
 
 [lsst-ts/ts_cRIOpy]: https://github.com/lsst-ts/ts_cRIOpy 
 [lsst-ts/ts_m1m3support]: https://github.com/lsst-ts/ts_m1m3support
 [lsst-ts/ts_config_mttcs]: https://github.com/lsst-ts/ts_config_mttcs
+[lsst-sitcom/ts_utils]:https://github.com/lsst-ts/ts_utils
+[lsst-sitcom/ts_idl]:https://github.com/lsst-ts/ts_idl
 [lsst-sitcom/M2_FEA]: https://github.com/lsst-sitcom/M2_FEA
 
 Since every user has a different setup, the paths might be slightly different.  
@@ -63,6 +67,8 @@ In order to have the required repositories available, open a terminal and run th
 git clone https://github.com/lsst-ts/ts_cRIOpy $HOME/notebooks/lsst-ts/ts_cRIOpy
 git clone https://github.com/lsst-ts/ts_m1m3support.git $HOME/notebooks/lsst-ts/ts_m1m3support
 git clone https://github.com/lsst-ts/ts_config_mttcs $HOME/notebooks/lsst-ts/ts_config_mttcs
+git clone https://github.com/lsst-ts/ts_utils $HOME/notebooks/lsst-ts/ts_utils
+git clone https://github.com/lsst-ts/ts_idl $HOME/notebooks/lsst-ts/ts_idl
 git clone https://github.com/lsst-sitcom/M2_FEA $HOME/notebooks/lsst-sitcom/M2_FEA
 ```
 
@@ -74,6 +80,10 @@ And add these lines to your `$HOME/notebooks/.user_setups` file:
 export LSST_DDS_DOMAIN_ID=0
 setup -j notebooks_vandv -r $HOME/notebooks/lsst-sitcom/notebooks_vandv
 setup -j ts_cRIOpy -r $HOME/notebooks/lsst-ts/ts_cRIOpy
+setup -j ts_config_mttcs -r  $HOME/notebooks/lsst-ts/ts_config_mttcs
+setup -j ts_utils -r  $HOME/notebooks/lsst-ts/ts_utils
+setup -j ts_idl -r $HOME/notebooks/lsst-ts/ts_idl
+setup -j M2_FEA -r $HOME/notebooks/lsst-sitcom/M2_FEA
 ```
 
 Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations. 
