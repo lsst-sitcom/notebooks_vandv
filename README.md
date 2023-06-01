@@ -8,6 +8,7 @@ It is also recommended that notebooks and/or associated methods that may need to
 Some notebooks will require you to clone some extra repositories to your Nublado home folder.  
 Since every user has a different setup, the paths might be slightly different.  
 It is recommended to have all the repositories cloned under `$HOME/notebooks`.  
+
 You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later.  
 For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`.  
 However this is simply a recommendation and you are free to organize your folders as you please.    
@@ -64,6 +65,7 @@ The paths below consider this directory structure but, of course, you are free t
 In order to have the required repositories available, open a terminal and run the following commands:
 
 ```
+git clone https://github.com/lsst-sitcom/notebooks_vandv $HOME/notebooks/lsst-sitcom/notebooks_vandv
 git clone https://github.com/lsst-ts/ts_cRIOpy $HOME/notebooks/lsst-ts/ts_cRIOpy
 git clone https://github.com/lsst-ts/ts_m1m3support.git $HOME/notebooks/lsst-ts/ts_m1m3support
 git clone https://github.com/lsst-ts/ts_config_mttcs $HOME/notebooks/lsst-ts/ts_config_mttcs
