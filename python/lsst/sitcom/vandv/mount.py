@@ -51,10 +51,10 @@ async def moveMountInElevationSteps(
 def get_slew_pairs(starts, stops, return_unmatched=False):
     """
     Given vectors of start times and stop times take the longer vector
-    and iterate over it. If that is starts, for each start time select all stop
+    and iterate over it. If that is `starts`, for each start time select all stop
     times that are > than the start time and < than the next start time.
-    If multiple stops are detected select the minimum one. Also keeps track and
-    returns the unmatched start and stop times.
+    If multiple `stops` are detected select the minimum one. Also,
+    the unmatched start and stop times can be returned with `return_unmatched`.
     Parameters
     ----------
     starts : float
@@ -158,9 +158,9 @@ def get_slews_edge_detection_telemetry(
 ):
     """
     given timestamps and velocity telemetry from mtMount azmuith or elevation.
-    Firt we smooth the velocity measurements and convert them to speed.
-    Then an edge detection kernel is run over the speed data, where maxima 
-    are the begining of slews and minima are the ends of slews.
+    First, we smooth the velocity measurements and convert them to speed.
+    Then, an edge detection kernel convolved with the speed data, `starts` are 
+    identified by maxima and `stops` by minima values of the convolved data.
     
     Parameters
     ----------
@@ -232,8 +232,8 @@ def get_slews_command_track_target_and_telemetry(
     vel_thresh=0.05,
 ):
     """
-    given command track target data identify slew starts as large shifts in 
-    the azimuth. Then, identify stops from the timestamps and velocity 
+    given command track target data identify slew `starts` as large shifts in 
+    the azimuth. Then, identify `stops` from the timestamps and velocity 
     telemetry from mtMount azmuith or elevation.
     
     Parameters
@@ -296,7 +296,7 @@ def get_slews_command_track_target_and_telemetry(
 
 def get_slew_from_mtmount(mt_mount_data_frame):
     """
-    givien a dataframe of mtMount telemetry return identified slews
+    Givien a dataframe of mtMount telemetry return identified slews.
     Parameters
     ----------
     mt_mount_data_frame: data_frame
