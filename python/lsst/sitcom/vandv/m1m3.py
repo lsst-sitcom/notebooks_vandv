@@ -30,14 +30,14 @@ def get_rms(s):
     return rms
 
 
-def lut_elevation_forces(elevation, lut_fname, lut_path=None):
+def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
     """Returns the Elevation Forces for M1M3 based on the elevation angle
     and on a given look-up table.
 
     Parameters
     ----------
-    elevation : float
-        Elevation angle in degrees
+    elevation : np.array
+        Elevation angles in degrees
     lut_fname : string
         LUT name
     lut_path : str or None
@@ -62,7 +62,7 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None):
 
     lut_file = os.path.join(lut_path, lut_fname)
 
-    if not os.path.exist(lut_file):
+    if not os.path.exists(lut_file):
         raise FileNotFoundError(
             f"Could not find LUT for M1M3. Check the path below\n" f"  {lut_file}"
         )
@@ -70,19 +70,18 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None):
     lut_el = pd.read_csv(lut_file)
 
     n = len(lut_el.index)
-    elevation_forces = np.zeros(n)
-
+    elevation_forces = np.zeros((n, len(elevation))) if as_array else np.zeros(n)
     zenith_angle = 90.0 - elevation
-
+    
     for i in range(n):
         coeff = [lut_el["Coefficient %d" % j][i] for j in range(5, -1, -1)]
         mypoly = np.poly1d(coeff)
         elevation_forces[i] = mypoly(zenith_angle)
 
-    return np.array(elevation_forces)
 
+    return elevation_forces if as_array else np.array(elevation_forces)
 
-def lut_elevation_xforces(elevation, lut_path=None):
+def lut_elevation_xforces(elevation, lut_path=None, as_array=False):
     """
     Return the Elevation xForces for M1M3 based on the Elevation angle.
 
@@ -100,10 +99,10 @@ def lut_elevation_xforces(elevation, lut_path=None):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationXTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
 
 
-def lut_elevation_yforces(elevation, lut_path=None):
+def lut_elevation_yforces(elevation, lut_path=None, as_array=False):
     """
     Return the Elevation yForces for M1M3 based on the Elevation angle.
 
@@ -121,10 +120,10 @@ def lut_elevation_yforces(elevation, lut_path=None):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationYTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
 
 
-def lut_elevation_zforces(elevation, lut_path=None):
+def lut_elevation_zforces(elevation, lut_path=None, as_array=False):
     """
     Return the Elevation zForces for M1M3 based on the Elevation angle.
 
@@ -142,7 +141,7 @@ def lut_elevation_zforces(elevation, lut_path=None):
     array : the zForces calculated from the lut.
     """
     lut_file = "ElevationZTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
 
 
 def plot_m1m3_and_elevation(df, prefix=None):
@@ -531,7 +530,17 @@ def snapshot_zforces_overview(
     yact = -np.float64(fat[idxs, M1M3FATable.FATABLE_YPOSITION])
 
     data = series[cols]
-    im = ax.scatter(xact, yact, c=data, s=size)
+    
+    # Fill plot with empty actuators
+    data[data == 0] = np.nan
+    for x, y in zip(xact[np.isnan(data)], yact[np.isnan(data)]):
+        empty_actuator = plt.Circle((x, y), size/550, fc="k")
+        ax.add_patch(empty_actuator)
+    
+    if np.all(np.isnan(data)):
+        raise ValueError("No valid data in the array")
+
+    im = ax.scatter(xact, yact, c=data, s=size)  
 
     if show_ids:
         for x, y, _id in zip(xact, yact, ids):
