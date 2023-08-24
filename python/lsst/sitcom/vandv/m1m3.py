@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from lsst.ts.cRIOpy.M1M3FATable import FATABLE
+from lsst.ts.criopy.M1M3FATable import FATABLE
 
 from .efd import query_last_n
 
@@ -158,7 +158,7 @@ def plot_m1m3_and_elevation(df, prefix=None):
         DataFrame containing the all the applied z-forces on
         M1M3 (lsst.sal.MTM1M3.forceActuatorData.zForce??).
     """
-    from lsst.ts.cRIOpy.M1M3FATable import FATABLE
+    from lsst.ts.criopy.M1M3FATable import FATABLE
 
     actuators_ids = [129, 229, 329, 429]
     actuators_ids_table = [fa[1] for fa in FATABLE]
@@ -238,7 +238,7 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
     execution : str
         Test execution id (e.g. LVV-EXXXX).
     """
-    from lsst.ts.cRIOpy import M1M3FATable
+    from lsst.ts.criopy import M1M3FATable
 
     # Number of actuators in X, Y and Z
     x_size = 12
@@ -378,7 +378,7 @@ def timeline_zforces(
         Time-series containing the elevation angle obtained from
         `lsst.sal.MTMount.elevation`.
     """
-    from lsst.ts.cRIOpy.M1M3FATable import FATABLE
+    from lsst.ts.criopy.M1M3FATable import FATABLE
 
     if ids and indexes:
         raise ValueError(
@@ -497,7 +497,7 @@ def snapshot_zforces_overview(
     https://docushare.lsst.org/docushare/dsweb/Get/LSE-11/
     LSE-11_OpticalDesignSummary_rel3.5_20190819.pdf (Figure 15)
     """
-    from lsst.ts.cRIOpy import M1M3FATable
+    from lsst.ts.criopy import M1M3FATable
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # Show mirror area

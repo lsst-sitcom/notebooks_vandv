@@ -42,14 +42,14 @@ Data-analysis notebooks should have the following filename `LVV-TXXXX-analysis.i
 This notebooks require some extra repositories to be cloned locally so it can grab some constants and some look-up tables.
 Here is a list of which repos are required to run this notebook:
 
-* [lsst-ts/ts_cRIOpy]
+* [lsst-ts/ts_criopy]
 * [lsst-ts/ts_m1m3support]
 * [lsst-ts/ts_config_mttcs]
 * [lsst-sitcom/ts_utils]
 * [lsst-sitcom/ts_idl]
 * [lsst-sitcom/M2_FEA]
 
-[lsst-ts/ts_cRIOpy]: https://github.com/lsst-ts/ts_cRIOpy 
+[lsst-ts/ts_criopy]: https://github.com/lsst-ts/ts_criopy 
 [lsst-ts/ts_m1m3support]: https://github.com/lsst-ts/ts_m1m3support
 [lsst-ts/ts_config_mttcs]: https://github.com/lsst-ts/ts_config_mttcs
 [lsst-sitcom/ts_utils]:https://github.com/lsst-ts/ts_utils
@@ -66,7 +66,7 @@ In order to have the required repositories available, open a terminal and run th
 
 ```
 git clone https://github.com/lsst-sitcom/notebooks_vandv $HOME/notebooks/lsst-sitcom/notebooks_vandv
-git clone https://github.com/lsst-ts/ts_cRIOpy $HOME/notebooks/lsst-ts/ts_cRIOpy
+git clone https://github.com/lsst-ts/ts_criopy $HOME/notebooks/lsst-ts/ts_criopy
 git clone https://github.com/lsst-ts/ts_m1m3support.git $HOME/notebooks/lsst-ts/ts_m1m3support
 git clone https://github.com/lsst-ts/ts_config_mttcs $HOME/notebooks/lsst-ts/ts_config_mttcs
 git clone https://github.com/lsst-ts/ts_utils $HOME/notebooks/lsst-ts/ts_utils
@@ -81,7 +81,7 @@ And add these lines to your `$HOME/notebooks/.user_setups` file:
 ```
 export LSST_DDS_DOMAIN_ID=0
 setup -j notebooks_vandv -r $HOME/notebooks/lsst-sitcom/notebooks_vandv
-setup -j ts_cRIOpy -r $HOME/notebooks/lsst-ts/ts_cRIOpy
+setup -j ts_criopy -r $HOME/notebooks/lsst-ts/ts_criopy
 setup -j ts_config_mttcs -r  $HOME/notebooks/lsst-ts/ts_config_mttcs
 setup -j ts_utils -r  $HOME/notebooks/lsst-ts/ts_utils
 setup -j ts_idl -r $HOME/notebooks/lsst-ts/ts_idl
