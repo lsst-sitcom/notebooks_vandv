@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from lsst.ts.cRIOpy.M1M3FATable import FATABLE
+from lsst.ts.criopy.M1M3FATable import FATABLE
 
 from .efd import query_last_n
 
