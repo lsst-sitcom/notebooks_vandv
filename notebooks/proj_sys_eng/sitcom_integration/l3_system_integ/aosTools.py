@@ -6,22 +6,18 @@ import time
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from M1M3_FATABLE import *
-
 from lsst.ts import salobj
 from lsst.ts.idl.enums import MTM1M3
 from lsst.ts.idl.enums import MTHexapod
+from lsst.ts.xml.tables.m1m3 import FATable
 
 m3ORC = 2.508
 m3IRC = 0.550
 m1ORC = 4.18
 m1IRC = 2.558
 
-fat = np.array(FATABLE)
-m1m3_actID = np.int16(fat[:, FATABLE_ID])
-m1m3_nActuator = m1m3_actID.shape[0]
-m1m3_xact = np.float64(fat[:, FATABLE_XPOSITION])
-m1m3_yact = np.float64(fat[:, FATABLE_YPOSITION])
+m1m3_xact = np.float64([fa.x_position for fa in FATable])
+m1m3_yact = np.float64([fa.y_position for fa in FATable])
 
 aa = np.loadtxt('%s/notebooks/M2_FEA/data/M2_1um_72_force.txt'%(os.environ["HOME"]))
 # to have +x going to right, and +y going up, we need to transpose and reverse x and y
