@@ -74,6 +74,7 @@ git clone https://github.com/lsst-ts/ts_config_mttcs $HOME/notebooks/lsst-ts/ts_
 git clone https://github.com/lsst-ts/ts_utils $HOME/notebooks/lsst-ts/ts_utils
 git clone https://github.com/lsst-ts/ts_xml $HOME/notebooks/lsst-ts/ts_xml
 git clone https://github.com/lsst-sitcom/M2_FEA $HOME/notebooks/lsst-sitcom/M2_FEA
+git clone https://github.com/lsst-sitcom/summit_utils.git $HOME/notebooks/lsst-sitcom/summit_utils
 ```
 
 If you use a different path for these repositories, make sure that you pass this path when running the associated functions.  
@@ -87,6 +88,7 @@ setup -j ts_criopy -r $HOME/notebooks/lsst-ts/ts_criopy
 setup -j ts_config_mttcs -r  $HOME/notebooks/lsst-ts/ts_config_mttcs
 setup -j ts_utils -r  $HOME/notebooks/lsst-ts/ts_utils
 setup -j M2_FEA -r $HOME/notebooks/lsst-sitcom/M2_FEA
+setup -j summit_utils -r $HOME/notebooks/lsst-sitcom/summit_utils
 ```
 
 Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations.  
