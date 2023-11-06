@@ -72,7 +72,6 @@ git clone https://github.com/lsst-ts/ts_criopy $HOME/notebooks/lsst-ts/ts_criopy
 git clone https://github.com/lsst-ts/ts_m1m3support.git $HOME/notebooks/lsst-ts/ts_m1m3support
 git clone https://github.com/lsst-ts/ts_config_mttcs $HOME/notebooks/lsst-ts/ts_config_mttcs
 git clone https://github.com/lsst-ts/ts_utils $HOME/notebooks/lsst-ts/ts_utils
-git clone https://github.com/lsst-ts/ts_idl $HOME/notebooks/lsst-ts/ts_idl
 git clone https://github.com/lsst-ts/ts_xml $HOME/notebooks/lsst-ts/ts_xml
 git clone https://github.com/lsst-sitcom/M2_FEA $HOME/notebooks/lsst-sitcom/M2_FEA
 ```
@@ -87,7 +86,6 @@ setup -j notebooks_vandv -r $HOME/notebooks/lsst-sitcom/notebooks_vandv
 setup -j ts_criopy -r $HOME/notebooks/lsst-ts/ts_criopy
 setup -j ts_config_mttcs -r  $HOME/notebooks/lsst-ts/ts_config_mttcs
 setup -j ts_utils -r  $HOME/notebooks/lsst-ts/ts_utils
-setup -j ts_idl -r $HOME/notebooks/lsst-ts/ts_idl
 setup -j M2_FEA -r $HOME/notebooks/lsst-sitcom/M2_FEA
 ```
 
