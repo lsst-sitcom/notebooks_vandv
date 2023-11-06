@@ -24,13 +24,13 @@ The folder/file organization is not set on stone, but one should consider how ea
 Each notebook's name should start with the test case code, a dash, and short name that represent the test case.  
 This will help quick assesment of each notebook's function while keeping the information required to find the actual Test Case.
 Do not use spaces in the filename.  
-Instead, replace spaces with underlines (`_`). 
+Instead, replace spaces with underlines (`_`).  
 
 For example, you can find the [LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction] notebook counterpart in `notebooks/proj_sys_eng/SIT-COM_Integration/LVV-T2229-Closed_Loop.ipynb`.  
 
 A sub-folder should have at least five notebooks within it to justify its existence.  
 Otherwise, simply add the notebooks in the current folder.  
-This avoid having multiple sub-folders with very few files within them and make it easier to find the files.
+This avoid having multiple sub-folders with very few files within them and make it easier to find the files.  
 
 Data-analysis notebooks should live in the same folder as the data-acquisition notebooks.  
 Data-analysis notebooks should have the following filename `LVV-TXXXX-analysis.ipynb`, where `LVV-TXXXX` is the associated test case.  
@@ -45,21 +45,23 @@ Here is a list of which repos are required to run this notebook:
 * [lsst-ts/ts_criopy]
 * [lsst-ts/ts_m1m3support]
 * [lsst-ts/ts_config_mttcs]
-* [lsst-sitcom/ts_utils]
-* [lsst-sitcom/ts_idl]
-* [lsst-sitcom/M2_FEA]
+* [lsst-ts/ts_xml]
+* [lsst-ts/ts_utils]
+* [lsst-ts/ts_idl]
+* [lsst-sitcom/M2_FEA]]
 
 [lsst-ts/ts_criopy]: https://github.com/lsst-ts/ts_criopy 
 [lsst-ts/ts_m1m3support]: https://github.com/lsst-ts/ts_m1m3support
 [lsst-ts/ts_config_mttcs]: https://github.com/lsst-ts/ts_config_mttcs
-[lsst-sitcom/ts_utils]:https://github.com/lsst-ts/ts_utils
-[lsst-sitcom/ts_idl]:https://github.com/lsst-ts/ts_idl
+[lsst-ts/ts_xml]: https://github.com/lsst-ts/ts_xml
+[lsst-ts/ts_utils]:https://github.com/lsst-ts/ts_utils
+[lsst-ts/ts_idl]:https://github.com/lsst-ts/ts_idl
 [lsst-sitcom/M2_FEA]: https://github.com/lsst-sitcom/M2_FEA
 
 Since every user has a different setup, the paths might be slightly different.  
-It is recommended to have all the repositories cloned under `$HOME/notebooks`. 
-You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later. 
-For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`. 
+It is recommended to have all the repositories cloned under `$HOME/notebooks`.  
+You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later.  
+For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`.  
 The paths below consider this directory structure but, of course, you are free to organize your folders as you please.
 
 In order to have the required repositories available, open a terminal and run the following commands:
@@ -71,6 +73,7 @@ git clone https://github.com/lsst-ts/ts_m1m3support.git $HOME/notebooks/lsst-ts/
 git clone https://github.com/lsst-ts/ts_config_mttcs $HOME/notebooks/lsst-ts/ts_config_mttcs
 git clone https://github.com/lsst-ts/ts_utils $HOME/notebooks/lsst-ts/ts_utils
 git clone https://github.com/lsst-ts/ts_idl $HOME/notebooks/lsst-ts/ts_idl
+git clone https://github.com/lsst-ts/ts_xml $HOME/notebooks/lsst-ts/ts_xml
 git clone https://github.com/lsst-sitcom/M2_FEA $HOME/notebooks/lsst-sitcom/M2_FEA
 ```
 
@@ -88,7 +91,7 @@ setup -j ts_idl -r $HOME/notebooks/lsst-ts/ts_idl
 setup -j M2_FEA -r $HOME/notebooks/lsst-sitcom/M2_FEA
 ```
 
-Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations. 
+Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations.  
 For M2, you can check the [M2 Summit Manual] page in Confluence.
 
 [M2 Summit Manual]: https://confluence.lsstcorp.org/display/LTS/Use+of+M2+EUI+on+Summit
