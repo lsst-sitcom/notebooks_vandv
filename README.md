@@ -47,7 +47,6 @@ Here is a list of which repos are required to run this notebook:
 * [lsst-ts/ts_config_mttcs]
 * [lsst-ts/ts_xml]
 * [lsst-ts/ts_utils]
-* [lsst-ts/ts_idl]
 * [lsst-sitcom/M2_FEA]]
 
 [lsst-ts/ts_criopy]: https://github.com/lsst-ts/ts_criopy 
@@ -55,7 +54,6 @@ Here is a list of which repos are required to run this notebook:
 [lsst-ts/ts_config_mttcs]: https://github.com/lsst-ts/ts_config_mttcs
 [lsst-ts/ts_xml]: https://github.com/lsst-ts/ts_xml
 [lsst-ts/ts_utils]:https://github.com/lsst-ts/ts_utils
-[lsst-ts/ts_idl]:https://github.com/lsst-ts/ts_idl
 [lsst-sitcom/M2_FEA]: https://github.com/lsst-sitcom/M2_FEA
 
 Since every user has a different setup, the paths might be slightly different.  
