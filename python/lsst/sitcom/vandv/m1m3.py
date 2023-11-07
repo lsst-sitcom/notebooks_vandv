@@ -44,6 +44,9 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
         The path to the directory that holds the `lut_file`.
         If `None`, it falls back to
         `$HOME/notebooks/lsst-ts/ts_m1m3support/SettingFiles/Tables/`
+    as_array : bool
+        Boolean indicating if the lut values should be an array. 
+        Should be True if passing more than one value for elevation.
 
     Returns
     -------
