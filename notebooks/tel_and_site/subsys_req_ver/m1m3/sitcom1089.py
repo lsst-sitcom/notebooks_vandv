@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import h5py
+from scipy.interpolate import UnivariateSpline
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
 from lsst.summit.utils.efdUtils import getEfdData
@@ -242,8 +243,79 @@ def get_peak_points(freq, psd, height=0.01):
 
 
 def resample_times(timestamp, yval, new_delta_t):
+    """
+    Resample the given time series data to a new time step.
+
+    Parameters:
+    timestamp : array_like
+        Array of timestamps corresponding to the yval data points.
+    yval : array_like
+        Array of data values corresponding to the timestamps.
+    new_delta_t : float
+        The new time step interval to resample the data.
+
+    Returns:
+    tuple of np.ndarray
+        A tuple containing the resampled timestamps and corresponding yval values.
+        Data points with NaN after interpolation are excluded from the output.
+
+    Notes:
+    The function uses linear interpolation to resample yval at the new time steps
+    defined by new_delta_t. Points that result in NaN after interpolation are
+    removed from the final output.
+    """
     new_x = np.arange(timestamp.min(), timestamp.max() + new_delta_t, new_delta_t)
     interp_y = interp1d(timestamp, yval, bounds_error=False)
     new_y = interp_y(new_x)
     sel = ~np.isnan(new_y)
     return new_x[sel], new_y[sel]
+
+
+def get_univariate_splines(
+    times, positions, velocities, interpPoints, kernel, smoothingFactor
+):
+    """
+    Calculate smooth approximations (splines) for position, velocity, acceleration, and jerk.
+
+    Parameters:
+    times : array_like
+        Array of time points.
+    positions : array_like
+        Array of position values corresponding to the times.
+    velocities : array_like
+        Array of velocity values corresponding to the times.
+    interpPoints : array_like
+        Array of points at which to interpolate the splines.
+    kernel : array_like
+        The kernel used for convolution to smooth the derivatives.
+    smoothingFactor : float
+        Smoothing factor to apply to the splines.
+
+    Returns:
+    tuple of np.ndarray
+        A tuple containing the interpolated position, velocity, acceleration,
+        and jerk at the given interpPoints.
+
+    Notes:
+    The function first fits a univariate spline to the positions and then
+    calculates the velocity and acceleration by differentiating the position spline.
+    Both derivatives are then smoothed by convolution with the given kernel. The
+    jerk is obtained by differentiating the smoothed acceleration spline.
+    """
+    posSpline = UnivariateSpline(times, positions, s=0)
+    velSpline1 = UnivariateSpline(times, velocities, s=0)
+    # Now smooth the derivative before differentiating again
+    smoothedVel = np.convolve(velSpline1(interpPoints), kernel, mode="same")
+    velSpline = UnivariateSpline(interpPoints, smoothedVel, s=smoothingFactor)
+    accSpline1 = velSpline.derivative(n=1)
+    smoothedAcc = np.convolve(accSpline1(interpPoints), kernel, mode="same")
+    # Now smooth the derivative before differentiating again
+    accSpline = UnivariateSpline(interpPoints, smoothedAcc, s=smoothingFactor)
+    jerkSpline = accSpline.derivative(n=1)
+
+    return (
+        posSpline(interpPoints),
+        velSpline(interpPoints),
+        accSpline(interpPoints),
+        jerkSpline(interpPoints),
+    )
