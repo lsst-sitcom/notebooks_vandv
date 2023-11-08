@@ -10,7 +10,7 @@ import pandas as pd
 
 from lsst.ts.xml.tables.m1m3 import actuator_id_to_index, FATable
 
-from .efd import query_last_n
+from lsst.sitcom.vandv.efd import query_last_n
 
 
 def get_rms(s):
