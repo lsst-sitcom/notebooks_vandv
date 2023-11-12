@@ -47,7 +47,8 @@ Here is a list of which repos are required to run this notebook:
 * [lsst-ts/ts_config_mttcs]
 * [lsst-ts/ts_xml]
 * [lsst-ts/ts_utils]
-* [lsst-sitcom/M2_FEA]]
+* [lsst-sitcom/M2_FEA]
+* [lsst-sitcom/summit_utils]
 
 [lsst-ts/ts_criopy]: https://github.com/lsst-ts/ts_criopy 
 [lsst-ts/ts_m1m3support]: https://github.com/lsst-ts/ts_m1m3support
@@ -55,6 +56,7 @@ Here is a list of which repos are required to run this notebook:
 [lsst-ts/ts_xml]: https://github.com/lsst-ts/ts_xml
 [lsst-ts/ts_utils]:https://github.com/lsst-ts/ts_utils
 [lsst-sitcom/M2_FEA]: https://github.com/lsst-sitcom/M2_FEA
+[lsst-sitcom/summit_utils]: https://github.com/lsst-sitcom/summit_utils
 
 Since every user has a different setup, the paths might be slightly different.  
 It is recommended to have all the repositories cloned under `$HOME/notebooks`.  
@@ -87,6 +89,15 @@ setup -j ts_config_mttcs -r  $HOME/notebooks/lsst-ts/ts_config_mttcs
 setup -j ts_utils -r  $HOME/notebooks/lsst-ts/ts_utils
 setup -j M2_FEA -r $HOME/notebooks/lsst-sitcom/M2_FEA
 setup -j summit_utils -r $HOME/notebooks/lsst-sitcom/summit_utils
+```
+
+You might want to work using a special branch for one or more repositories.  
+In that case, go to the repository root folder and checkout the branch you want to use.  
+For example:  
+
+```
+cd $HOME/notebooks/lsst-sitcom/summit_utils
+git checkout ${work_branch_name}
 ```
 
 Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations.  
