@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 from astropy.time import Time
 
+from lsst_efd_client import EfdClient
 from lsst.summit.utils.tmaUtils import TMAEventMaker, TMAState
 from lsst.summit.utils.efdUtils import getEfdData, calcNextDay
 
@@ -191,10 +192,11 @@ class IdentifyOscillationEvents:
         list
             A list of slewing events.
         """
-        event_maker = TMAEventMaker()
+        client = EfdClient("idf_efd")
+        event_maker = TMAEventMaker(client)
         events = event_maker.getEvents(int(day_obs))
         slews = [e for e in events if e.type == TMAState.SLEWING]
-        return slews, event_maker.client
+        return slews, client
 
     async def get_data(self, event, client):
         """
