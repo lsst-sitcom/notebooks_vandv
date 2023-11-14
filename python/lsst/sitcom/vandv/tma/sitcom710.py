@@ -219,6 +219,11 @@ class SlewData:
         return spline_frame
     
     def get_max_frame(self):
+        if self.all_data.empty:
+            print("Warning! Query succesful but there's no data.")
+            empty  = pd.DataFrame()
+            return empty
+                  
         slew_num = []
         day_num = []
         slew_time = [] # final time
@@ -231,7 +236,7 @@ class SlewData:
 
         az_jerk_max = []
         el_jerk_max = []
-
+        
         for i in np.unique(self.all_data['day']):
             slew_day = (self.all_data['day']==i)
             for j in np.unique(self.all_data['slew_index'][slew_day]):
@@ -278,15 +283,9 @@ def plot_max_hist(max_frame, limitsBool, logBool, fit, padding):
     fig,axs = plt.subplots(3, 2, dpi=175, figsize=(10,5), sharex=False)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     if len(np.unique(max_frame['day'])) > 1:
-        if logBool:
-            plt.suptitle(f"Maximums for {first_day} - {last_day} -- Slews: " + num_slews + "\nLog Count -- Fit: " + fit + " -- Padding: " + padding, fontsize = 11)
-        else:
-            plt.suptitle(f"Maximums for {first_day} - {last_day} -- Slews: " + num_slews + "\n Fit: " + fit + " -- Padding: " + padding, fontsize = 14)
+        plt.suptitle(f"Maximums for {first_day} - {last_day} -- Slews: " + num_slews + "\n Fit: " + fit + " -- Padding: " + padding, fontsize = 14)
     else:
-        if logBool:
-            plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + "\nLog Count -- Fit: " + fit + " -- Padding: " + padding, fontsize = 11)
-        else:
-            plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + "\nFit: " + fit + " -- Padding: " + padding, fontsize = 14)
+        plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + "\nFit: " + fit + " -- Padding: " + padding, fontsize = 14)
 
     # bins for each type. The middle parameter is based on the max spec limit
     velbins = np.linspace(0, az_limit_dict["max_velocity"], 100) 
@@ -300,8 +299,7 @@ def plot_max_hist(max_frame, limitsBool, logBool, fit, padding):
         counts, bins, patches = plt.hist(max_frame["az_vel"], color="tab:blue", bins=velbins)
         plotHistAzDesignLim("design_velocity", "max_velocity", 0, np.max(counts), design_color, max_color)
     plt.title(f"Azimuth")
-    plt.ylabel("Velcoity Count")
-    plt.xlabel("deg/s")
+    plt.xlabel("Velocity [deg/s]")
 
     plt.subplot(3,2,2)
     plt.hist(max_frame["el_vel"], log=logBool, color="tab:blue", bins=velbins)
@@ -309,37 +307,35 @@ def plot_max_hist(max_frame, limitsBool, logBool, fit, padding):
         counts, bins, patches = plt.hist(max_frame["el_vel"], color="tab:blue", bins=velbins)
         plotHistElDesignLim("design_velocity", "max_velocity", 0, np.max(counts), design_color, max_color)
     plt.title(f"Elevation")
-    plt.xlabel("deg/s")
+    plt.xlabel("Velocity [deg/s]")
 
     plt.subplot(3,2,3)
     plt.hist(max_frame["az_acc"], log=logBool, color="tab:blue", bins=accbins)
     if limitsBool == True:
         counts, bins, patches = plt.hist(max_frame["az_acc"], color="tab:blue", bins=accbins)
         plotHistAzDesignLim("design_acceleration", "max_acceleration", 0, np.max(counts), design_color, max_color)
-    plt.ylabel("Acceleration Count")
-    plt.xlabel("deg/s^2")
+    plt.xlabel("Acceleration [deg/s$^2$]")
 
     plt.subplot(3,2,4)
     plt.hist(max_frame["el_acc"], log=logBool, color="tab:blue", bins=accbins)
     if limitsBool == True:
         counts, bins, patches = plt.hist(max_frame["el_acc"], color="tab:blue", bins=accbins)
         plotHistElDesignLim("design_acceleration", "max_acceleration", 0, np.max(counts), design_color, max_color)
-    plt.xlabel("deg/s^2")
+    plt.xlabel("Acceleration [deg/s$^2$]")
 
     plt.subplot(3,2,5)
     plt.hist(max_frame["az_jerk"], log=logBool, color="tab:blue", bins=jerkbins)
     if limitsBool == True:
         counts, bins, patches = plt.hist(max_frame["az_jerk"], color="tab:blue", bins=jerkbins)
         plotHistAzDesignLim("design_jerk", "max_jerk", 0, np.max(counts), design_color, max_color)
-    plt.ylabel("Jerk Count")
-    plt.xlabel("deg/s^3")
+    plt.xlabel("Jerk [deg/s$^3$]")
 
     plt.subplot(3,2,6)
     plt.hist(max_frame["el_jerk"], log=logBool, color="tab:blue", bins=jerkbins)
     if limitsBool == True:
         counts, bins, patches = plt.hist(max_frame["el_jerk"], color="tab:blue", bins=jerkbins)
         plotHistElDesignLim("design_jerk", "max_jerk", 0, np.max(counts), design_color, max_color)
-    plt.xlabel("deg/s^3")
+    plt.xlabel("Jerk [deg/s$^3$]")
 
     plt.show()
 
@@ -403,48 +399,74 @@ def slew_profile_plot(spline_frame, dayObs, slew_index, limitsBool):
     plt.plot(azRelativeTimes, slew_frame['azPosition'], lw=line_width, color=az_color, label='Spline fit')
     plt.scatter(azRelativeTimes, slew_frame['azPosition'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
     plt.title(f"Azimuth")
-    plt.ylabel("Degrees")
+    plt.ylabel("Position\n[deg]")
+    if slew_frame['azPosition'].max()-slew_frame['azPosition'].min() < 1:
+        meanval = slew_frame['azPosition'].mean()
+        plt.ylim(meanval-1, meanval+1)
 
     plt.subplot(4,2,2)
     plt.plot(elRelativeTimes, slew_frame['elPosition'], lw=line_width, color=el_color, label='Spline fit')
     plt.scatter(elRelativeTimes, slew_frame['elPosition'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
     plt.title(f"Elevation")
+    if slew_frame['elPosition'].max()-slew_frame['elPosition'].min() < 1:
+        meanval = slew_frame['elPosition'].mean()
+        plt.ylim(meanval-1, meanval+1)
 
     plt.subplot(4,2,3)
     plt.plot(azRelativeTimes, slew_frame['azVelocity'], lw=line_width, color=az_color, label='Spline fit')
     plt.scatter(azRelativeTimes, slew_frame['azVelocity'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
     if limitsBool == True:
         plotAzDesignlim("design_velocity", "max_velocity", azRelativeTimes.iloc[[0]], azRelativeTimes.iloc[[-1]], design_color, max_color)
-    plt.ylabel("Deg/sec")
+    plt.ylabel("Velocity\n[deg/sec]")
+    if slew_frame['azVelocity'].max()-slew_frame['azVelocity'].min() < 1:
+        meanval = slew_frame['azVelocity'].mean()
+        plt.ylim(meanval-1, meanval+1)
 
     plt.subplot(4,2,4)
     plt.plot(elRelativeTimes, slew_frame['elVelocity'], lw=line_width, color=el_color, label='Spline fit')
     plt.scatter(elRelativeTimes, slew_frame['elVelocity'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
     if limitsBool == True:
         plotElDesignlim("design_velocity", "max_velocity", elRelativeTimes.iloc[[0]], elRelativeTimes.iloc[[-1]], design_color, max_color)
+    if slew_frame['elVelocity'].max()-slew_frame['elVelocity'].min() < 1:
+        meanval = slew_frame['elVelocity'].mean()
+        plt.ylim(meanval-1, meanval+1)
 
     plt.subplot(4,2,5)
     plt.plot(azRelativeTimes, slew_frame['azAcceleration'], lw=line_width, color=az_color, label='Spline fit')
     if limitsBool == True:
         plotAzDesignlim("design_acceleration", "max_acceleration", azRelativeTimes.iloc[[0]], azRelativeTimes.iloc[[-1]], design_color, max_color)
-    plt.ylabel("Deg/sec^2")
+    plt.ylabel("Acceleration\n[deg/sec$^2$]")
+    if slew_frame['azAcceleration'].max()-slew_frame['azAcceleration'].min() < 1:
+        meanval = slew_frame['azAcceleration'].mean()
+        plt.ylim(meanval-1, meanval+1)
 
     plt.subplot(4,2,6)
     plt.plot(elRelativeTimes, slew_frame['elAcceleration'], lw=line_width, color=el_color, label='Spline fit')
     if limitsBool == True:
         plotElDesignlim("design_acceleration", "max_acceleration", elRelativeTimes.iloc[[0]], elRelativeTimes.iloc[[-1]], design_color, max_color)
+    if slew_frame['elAcceleration'].max()-slew_frame['elAcceleration'].min() < 1:
+        meanval = slew_frame['elAcceleration'].mean()
+        plt.ylim(meanval-1, meanval+1)
 
     plt.subplot(4,2,7)
     plt.plot(azRelativeTimes, slew_frame['azJerk'], lw=line_width, color=az_color, label='Spline fit')
     if limitsBool == True:
         plotAzDesignlim("design_jerk", "max_jerk", azRelativeTimes.iloc[[0]], azRelativeTimes.iloc[[-1]], design_color, max_color)
-    plt.ylabel("Deg/sec^3")
-    plt.xlabel("seconds")
+    plt.ylabel("Jerk\n[deg/sec$^3$]")
+    plt.xlabel("time since slew start [sec]")
+    if slew_frame['azJerk'].max()-slew_frame['azJerk'].min() < 1:
+        meanval = slew_frame['azJerk'].mean()
+        plt.ylim(meanval-1, meanval+1)
 
     plt.subplot(4,2,8)
     plt.plot(elRelativeTimes, slew_frame['elJerk'], lw=line_width, color=el_color, label='Spline fit')
     if limitsBool == True:
         plotElDesignlim("design_jerk", "max_jerk", elRelativeTimes.iloc[[0]], elRelativeTimes.iloc[[-1]], design_color, max_color)
-    plt.xlabel("seconds")
+    plt.xlabel("time since slew start [sec]")
+    if slew_frame['elJerk'].max()-slew_frame['elJerk'].min() < 1:
+        meanval = slew_frame['elJerk'].mean()
+        plt.ylim(meanval-1, meanval+1)
+    
+    plt.subplots_adjust(wspace=0.15, hspace=0.20)
 
     plt.show()
