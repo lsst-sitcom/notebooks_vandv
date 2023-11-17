@@ -44,7 +44,7 @@ def merge_csvs(folder_name: str | Path, file_pattern: str, list_of_day_obs: list
     return df
 
 
-def correlation_map(df: pd.DataFrame, columns_to_use: list) -> None:
+def correlation_map(df: pd.DataFrame, columns_to_use: list, lines: list | None = None) -> None:
     """
     Display a correlation map for ``df`` while using only the columns in
     ``columns_to_use``.
@@ -55,6 +55,8 @@ def correlation_map(df: pd.DataFrame, columns_to_use: list) -> None:
         M1M3 ICS Summary data
     columns_to_use : list of str
         Names of the columns that we use for the correlation plot.
+    lines : list of ints, optional
+        If provided, add a line after each N-th variable. 
     """
     filtered_df = df[columns_to_use]
     corr = filtered_df.corr()
@@ -63,8 +65,8 @@ def correlation_map(df: pd.DataFrame, columns_to_use: list) -> None:
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
     # Draw the heatmap with the mask and correct aspect ratio
-    plt.figure(figsize=(20, 15))
-    sns.heatmap(
+    fig = plt.figure(figsize=(20, 15))
+    ax = sns.heatmap(
         corr,
         cmap=cmap,
         vmax=0.3,
@@ -73,9 +75,14 @@ def correlation_map(df: pd.DataFrame, columns_to_use: list) -> None:
         linewidths=0.5,
         cbar_kws={"shrink": 0.5},
     )
+    
+    if lines:
+        ax.hlines(lines, *ax.get_xlim(), colors="black", alpha=0.5)
+        ax.vlines(lines, *ax.get_ylim(), colors="black", alpha=0.5)
+    
     plt.title("Further Updated Correlation Map")
     plt.show()
-
+    
 
 def multiaxis_plots(df: pd.DataFrame, xcol: str, ycol_prefix: str):
     """
