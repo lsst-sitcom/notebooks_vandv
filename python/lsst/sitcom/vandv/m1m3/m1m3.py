@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from lsst.ts.criopy.M1M3FATable import FATABLE
+from lsst.ts.xml.tables.m1m3 import actuator_id_to_index, FATable
 
-from .efd import query_last_n
+from lsst.sitcom.vandv.efd import query_last_n
 
 
 def get_rms(s):
@@ -23,27 +23,30 @@ def get_rms(s):
         elevation angle as "elevation".
     """
     lut = lut_elevation_zforces(s["elevation"])
-    cols = [c for c in s.index for fa in FATABLE if f"zForce{fa[1]}" in c]
+    cols = [c for c in s.index for fa in FATable if f"zForce{fa.z_index}" in c]
 
     zforces = np.array(s["mtm1m3.forceActuatorData.zForce101"])
     rms = np.sqrt((1 / zforces.size) * np.sum((lut - zforces) ** 2))
     return rms
 
 
-def lut_elevation_forces(elevation, lut_fname, lut_path=None):
+def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
     """Returns the Elevation Forces for M1M3 based on the elevation angle
     and on a given look-up table.
 
     Parameters
     ----------
-    elevation : float
-        Elevation angle in degrees
+    elevation : np.array
+        Elevation angles in degrees
     lut_fname : string
         LUT name
     lut_path : str or None
         The path to the directory that holds the `lut_file`.
         If `None`, it falls back to
         `$HOME/notebooks/lsst-ts/ts_m1m3support/SettingFiles/Tables/`
+    as_array : bool
+        Boolean indicating if the lut values should be an array. 
+        Should be True if passing more than one value for elevation.
 
     Returns
     -------
@@ -62,7 +65,7 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None):
 
     lut_file = os.path.join(lut_path, lut_fname)
 
-    if not os.path.exist(lut_file):
+    if not os.path.exists(lut_file):
         raise FileNotFoundError(
             f"Could not find LUT for M1M3. Check the path below\n" f"  {lut_file}"
         )
@@ -70,19 +73,18 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None):
     lut_el = pd.read_csv(lut_file)
 
     n = len(lut_el.index)
-    elevation_forces = np.zeros(n)
-
+    elevation_forces = np.zeros((n, len(elevation))) if as_array else np.zeros(n)
     zenith_angle = 90.0 - elevation
-
+    
     for i in range(n):
         coeff = [lut_el["Coefficient %d" % j][i] for j in range(5, -1, -1)]
         mypoly = np.poly1d(coeff)
         elevation_forces[i] = mypoly(zenith_angle)
 
-    return np.array(elevation_forces)
 
+    return elevation_forces if as_array else np.array(elevation_forces)
 
-def lut_elevation_xforces(elevation, lut_path=None):
+def lut_elevation_xforces(elevation, lut_path=None, as_array=False):
     """
     Return the Elevation xForces for M1M3 based on the Elevation angle.
 
@@ -100,10 +102,10 @@ def lut_elevation_xforces(elevation, lut_path=None):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationXTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
 
 
-def lut_elevation_yforces(elevation, lut_path=None):
+def lut_elevation_yforces(elevation, lut_path=None, as_array=False):
     """
     Return the Elevation yForces for M1M3 based on the Elevation angle.
 
@@ -121,10 +123,10 @@ def lut_elevation_yforces(elevation, lut_path=None):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationYTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
 
 
-def lut_elevation_zforces(elevation, lut_path=None):
+def lut_elevation_zforces(elevation, lut_path=None, as_array=False):
     """
     Return the Elevation zForces for M1M3 based on the Elevation angle.
 
@@ -142,7 +144,7 @@ def lut_elevation_zforces(elevation, lut_path=None):
     array : the zForces calculated from the lut.
     """
     lut_file = "ElevationZTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path)
+    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
 
 
 def plot_m1m3_and_elevation(df, prefix=None):
@@ -156,13 +158,10 @@ def plot_m1m3_and_elevation(df, prefix=None):
     ----------
     df : pandas.DataFrame
         DataFrame containing the all the applied z-forces on
-        M1M3 (lsst.sal.MTM1M3.forceActuatorData.zForce??).
+        M1M3 (lsst.sal.MTM1M3.forceActuatorData.zForce).
     """
-    from lsst.ts.cRIOpy.M1M3FATable import FATABLE
-
     actuators_ids = [129, 229, 329, 429]
-    actuators_ids_table = [fa[1] for fa in FATABLE]
-    actuators_ids_idx = [actuators_ids_table.index(_id) for _id in actuators_ids]
+    actuators_ids_idx = [actuator_id_to_index(actuator_id) for actuator_id in actuators_ids]
     colors = ["C0", "C1", "C2", "C3"]
 
     # Prepare figure name
@@ -185,7 +184,7 @@ def plot_m1m3_and_elevation(df, prefix=None):
     # Plot forces vs time
     for i, c in zip(actuators_ids_idx, colors):
         zforce = df[f"mtm1m3.forceActuatorData.zForce{i}"].dropna()
-        ax0.plot(zforce, "-", c=c, label=f"zForce{i} ({actuators_ids_table[i]})")
+        ax0.plot(zforce, "-", c=c, label=f"zForce{i} ({actuators_ids[i]})")
 
     # plot forces vs elevation
     for i, c in zip(actuators_ids_idx, colors):
@@ -238,8 +237,6 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
     execution : str
         Test execution id (e.g. LVV-EXXXX).
     """
-    from lsst.ts.cRIOpy import M1M3FATable
-
     # Number of actuators in X, Y and Z
     x_size = 12
     y_size = 100
@@ -286,9 +283,8 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
             fz[key] = np.array([df[f"zForces{i}"] for i in range(z_size)]).squeeze()
 
     # Get the position of the actuators
-    fat = np.array(M1M3FATable.FATABLE)
-    xact = np.float64(fat[:, M1M3FATable.FATABLE_XPOSITION])
-    yact = np.float64(fat[:, M1M3FATable.FATABLE_YPOSITION])
+    xact = [fa.x_position for fa in FATable]
+    yact = [fa.y_position for fa in FATable]
 
     # Create the plot
     fig = plt.figure(figsize=(15, 15), dpi=120)
@@ -378,15 +374,13 @@ def timeline_zforces(
         Time-series containing the elevation angle obtained from
         `lsst.sal.MTMount.elevation`.
     """
-    from lsst.ts.cRIOpy.M1M3FATable import FATABLE
-
     if ids and indexes:
         raise ValueError(
             "Both `ids` and `indexes` where provided when"
             " only one of them was expected."
         )
 
-    actuators_ids_table = [fa[1] for fa in FATABLE]
+    actuators_ids_table = [fa.actuator_id for fa in FATable]
 
     if ids:
         indexes = [actuators_ids_table.index(_id) for _id in ids]
@@ -497,7 +491,7 @@ def snapshot_zforces_overview(
     https://docushare.lsst.org/docushare/dsweb/Get/LSE-11/
     LSE-11_OpticalDesignSummary_rel3.5_20190819.pdf (Figure 15)
     """
-    from lsst.ts.cRIOpy import M1M3FATable
+    from lsst.ts.criopy import M1M3FATable
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # Show mirror area
@@ -524,14 +518,22 @@ def snapshot_zforces_overview(
     idxs = [int(s) for c in cols for s in re.findall(r"\d+", c)]
 
     # Get the position of the actuators
-    fat = np.array(M1M3FATable.FATABLE)
-
-    ids = fat[idxs, M1M3FATable.FATABLE_ID]
-    xact = -np.float64(fat[idxs, M1M3FATable.FATABLE_XPOSITION])
-    yact = -np.float64(fat[idxs, M1M3FATable.FATABLE_YPOSITION])
+    ids = [fa.actuator_id for fa in FATable]
+    xact = -np.float64([fa.x_position for fa in FATable])
+    yact = -np.float64([fa.y_position for fa in FATable])
 
     data = series[cols]
-    im = ax.scatter(xact, yact, c=data, s=size)
+    
+    # Fill plot with empty actuators
+    data[data == 0] = np.nan
+    for x, y in zip(xact[np.isnan(data)], yact[np.isnan(data)]):
+        empty_actuator = plt.Circle((x, y), size/550, fc="k")
+        ax.add_patch(empty_actuator)
+    
+    if np.all(np.isnan(data)):
+        raise ValueError("No valid data in the array")
+
+    im = ax.scatter(xact, yact, c=data, s=size)  
 
     if show_ids:
         for x, y, _id in zip(xact, yact, ids):
