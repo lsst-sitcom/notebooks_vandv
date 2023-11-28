@@ -54,7 +54,8 @@ class SlewData:
     event_maker (EventMaker): Event maker instance for fetching data.
     spline_fit (str): Spline fitting type applied.
     padding (int): Padding amount used in data fetching.
-    real_data (DataFrame): Measured data for the entire day range
+    real_az_data (DataFrame): Measured azimuth data for the entire day range.
+    real_el_data (DataFrame): Measured elevation data for the entire day range.
     all_data (DataFrame): Data for the entire day range after spline fitting.
     max_data (DataFrame): Max values of velocity, acceleration, and jerk.
     """
@@ -308,53 +309,57 @@ def plot_max_hist(max_frame, limitsBool, logBool, fit, padding):
     else:
         plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + "\nFit: " + fit + " -- Padding: " + padding, fontsize = 14)
 
-    # bins for each type. The middle parameter is based on the max spec limit
-    velbins = np.linspace(0, az_limit_dict["max_velocity"], 100) 
-    accbins = np.linspace(0, az_limit_dict["max_acceleration"], 100)
-    jerkbins = np.linspace(0, az_limit_dict["max_jerk"], 100)
+    # bins for each graph
+    velbins_az = np.linspace(0, max_frame["az_vel"].max(), 100) 
+    accbins_az = np.linspace(0, max_frame["az_acc"].max(), 100)
+    jerkbins_az = np.linspace(0, max_frame["az_jerk"].max(), 100)
+    
+    velbins_el = np.linspace(0, max_frame["el_vel"].max(), 100) 
+    accbins_el = np.linspace(0, max_frame["el_acc"].max(), 100)
+    jerkbins_el = np.linspace(0, max_frame["el_jerk"].max(), 100)
     
     plt.subplot(3,2,1)
-    plt.hist(max_frame["az_vel"], log=logBool, color="tab:blue", bins=velbins)
+    plt.hist(max_frame["az_vel"], log=logBool, color="tab:blue", bins=velbins_az)
     if limitsBool:
         # only require counts output from plt.hist
-        counts, bins, patches = plt.hist(max_frame["az_vel"], color="tab:blue", bins=velbins)
+        counts, bins, patches = plt.hist(max_frame["az_vel"], color="tab:blue", bins=velbins_az)
         plotHistAzDesignLim("design_velocity", "max_velocity", 0, np.max(counts), design_color, max_color)
     plt.title(f"Azimuth")
     plt.xlabel("Velocity [deg/s]")
 
     plt.subplot(3,2,2)
-    plt.hist(max_frame["el_vel"], log=logBool, color="tab:blue", bins=velbins)
+    plt.hist(max_frame["el_vel"], log=logBool, color="tab:blue", bins=velbins_el)
     if limitsBool == True:
-        counts, bins, patches = plt.hist(max_frame["el_vel"], color="tab:blue", bins=velbins)
+        counts, bins, patches = plt.hist(max_frame["el_vel"], color="tab:blue", bins=velbins_el)
         plotHistElDesignLim("design_velocity", "max_velocity", 0, np.max(counts), design_color, max_color)
     plt.title(f"Elevation")
     plt.xlabel("Velocity [deg/s]")
 
     plt.subplot(3,2,3)
-    plt.hist(max_frame["az_acc"], log=logBool, color="tab:blue", bins=accbins)
+    plt.hist(max_frame["az_acc"], log=logBool, color="tab:blue", bins=accbins_az)
     if limitsBool == True:
-        counts, bins, patches = plt.hist(max_frame["az_acc"], color="tab:blue", bins=accbins)
+        counts, bins, patches = plt.hist(max_frame["az_acc"], color="tab:blue", bins=accbins_az)
         plotHistAzDesignLim("design_acceleration", "max_acceleration", 0, np.max(counts), design_color, max_color)
     plt.xlabel("Acceleration [deg/s$^2$]")
 
     plt.subplot(3,2,4)
-    plt.hist(max_frame["el_acc"], log=logBool, color="tab:blue", bins=accbins)
+    plt.hist(max_frame["el_acc"], log=logBool, color="tab:blue", bins=accbins_el)
     if limitsBool == True:
-        counts, bins, patches = plt.hist(max_frame["el_acc"], color="tab:blue", bins=accbins)
+        counts, bins, patches = plt.hist(max_frame["el_acc"], color="tab:blue", bins=accbins_el)
         plotHistElDesignLim("design_acceleration", "max_acceleration", 0, np.max(counts), design_color, max_color)
     plt.xlabel("Acceleration [deg/s$^2$]")
 
     plt.subplot(3,2,5)
-    plt.hist(max_frame["az_jerk"], log=logBool, color="tab:blue", bins=jerkbins)
+    plt.hist(max_frame["az_jerk"], log=logBool, color="tab:blue", bins=jerkbins_az)
     if limitsBool == True:
-        counts, bins, patches = plt.hist(max_frame["az_jerk"], color="tab:blue", bins=jerkbins)
+        counts, bins, patches = plt.hist(max_frame["az_jerk"], color="tab:blue", bins=jerkbins_az)
         plotHistAzDesignLim("design_jerk", "max_jerk", 0, np.max(counts), design_color, max_color)
     plt.xlabel("Jerk [deg/s$^3$]")
 
     plt.subplot(3,2,6)
-    plt.hist(max_frame["el_jerk"], log=logBool, color="tab:blue", bins=jerkbins)
+    plt.hist(max_frame["el_jerk"], log=logBool, color="tab:blue", bins=jerkbins_el)
     if limitsBool == True:
-        counts, bins, patches = plt.hist(max_frame["el_jerk"], color="tab:blue", bins=jerkbins)
+        counts, bins, patches = plt.hist(max_frame["el_jerk"], color="tab:blue", bins=jerkbins_el)
         plotHistElDesignLim("design_jerk", "max_jerk", 0, np.max(counts), design_color, max_color)
     plt.xlabel("Jerk [deg/s$^3$]")
 
