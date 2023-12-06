@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
 from scipy.signal import savgol_filter
 
-from lsst.summit.utils.tmaUtils import TMAEventMaker, getSlewsFromEventList
+from lsst.summit.utils.tmaUtils import TMAEventMaker, getSlewsFromEventList, TMAEvent
 from lsst.summit.utils.efdUtils import getEfdData, calcNextDay
 from lsst.sitcom import vandv
 import lsst.sitcom.vandv.tma.sitcom710 as sitcom710
@@ -32,6 +32,18 @@ az_limit_dict={
     "design_jerk": 28,
 }
 
+# default minimum y-ranges (peak-to-peak) for slew profile plot
+plot_range_dict = {
+    "az_pos": 0.1,
+    "el_pos": 0.1,
+    "az_vel": 0.02,
+    "el_vel": 0.02,
+    "az_acc": 0.02,
+    "el_acc": 0.02,
+    "az_jerk": 0.04,
+    "el_jerk": 0.04,
+}
+
 
 # Class for analysis
 class SlewData:
@@ -48,23 +60,40 @@ class SlewData:
     event_maker (EventMaker): Instance of EventMaker to fetch event data.
     spline_fit (str, optional): Type of spline fitting, defaults to "spline".
     padding (int, optional): Padding amount for data fetching, defaults to 0.
+    smoothing (float, optional): smoothing factor for Univariate spline fit, defaults to 0
+    kernel_size (int, optional): kernel size for Univariate spline fit, defaults to 20
+    block_id (int, optional): block ID to identify groups of slews, defaults to -1 (which finds all slews)
 
     Attributes:
     day_range (list): List of days within the specified date range.
     event_maker (EventMaker): Event maker instance for fetching data.
     spline_fit (str): Spline fitting type applied.
     padding (int): Padding amount used in data fetching.
+    smoothing (float): smoothing factor for Univariate spline fit
+    kernel_size (int): kernel size for Univariate spline fit
+    block_id (int): block ID to identify groups of slews related to that block
     real_az_data (DataFrame): Measured azimuth data for the entire day range.
     real_el_data (DataFrame): Measured elevation data for the entire day range.
     all_data (DataFrame): Data for the entire day range after spline fitting.
     max_data (DataFrame): Max values of velocity, acceleration, and jerk.
     """
     
-    def __init__(self, dayStart, dayEnd, event_maker, spline_fit = "spline", padding = 0):
+    def __init__(self, 
+                 dayStart, 
+                 dayEnd, 
+                 event_maker, 
+                 spline_fit = "spline", 
+                 padding = 0, 
+                 smoothing = 0, 
+                 kernel_size = 100,
+                 block_id = -1):
         self.day_range = self.get_day_range(dayStart, dayEnd)
         self.event_maker = event_maker
         self.spline_fit = spline_fit
         self.padding = padding
+        self.smoothing = smoothing
+        self.kernel_size = kernel_size
+        self.block_id = block_id
         self.real_az_data, self.real_el_data, self.all_data = self.get_spline_data()
         self.max_data = self.get_max_frame()
         
@@ -95,15 +124,15 @@ class SlewData:
 
     def get_spline_frame(self, dayObs, index, fullAzTimestamp, fullElTimestamp, az_position, az_velocity, el_position, el_velocity):
         """
-        Create a data frame for all original and fitted data
+        Create a data frame for all fitted data
         """
         npoints = int(np.max([np.round((fullAzTimestamp[-1]-fullAzTimestamp[0])/0.01/1e3,0)*1e3, 4000])) # clarify what this is doing
         plotAzXs = np.linspace(fullAzTimestamp[0], fullAzTimestamp[-1], npoints)
         plotElXs = np.linspace(fullElTimestamp[0], fullElTimestamp[-1], npoints)
 
-        kernel_size = len(fullAzTimestamp)
+        kernel_size = self.kernel_size
         kernel = np.ones(kernel_size)/kernel_size
-        s = 0 # smoothing factor
+        s = self.smoothing # smoothing factor
 
         if self.spline_fit == "spline":
             # input: times, positions, velocities, interpPoints, kernel, smoothing factor
@@ -172,6 +201,10 @@ class SlewData:
         return posSpline, velSpline, accSpline, jerkSpline
     
     def get_spline_data(self):
+        """
+        Queries the EFD and returns data frames of measured and fitted data
+        for each slew in the day range.
+        """
         topic_az = "lsst.sal.MTMount.azimuth"
         topic_el = "lsst.sal.MTMount.elevation"
         topic_columns = ["actualPosition", "actualVelocity", "timestamp"]
@@ -181,8 +214,16 @@ class SlewData:
         spline_frame = pd.DataFrame()
 
         for day in self.day_range:
-            slew_events = getSlewsFromEventList(self.event_maker.getEvents(day))
-            print(f'Found {len(slew_events)} slews for {day=}')
+            all_events = self.event_maker.getEvents(day)
+
+            # check if querying for slews related to specific blocks
+            if self.block_id == -1:
+                slew_events = getSlewsFromEventList(all_events)
+                print(f'Found {len(slew_events)} slews for {day=}')
+            else:
+                relateTo_events = [e for e in all_events if e.relatesTo(block=self.block_id)]
+                slew_events = getSlewsFromEventList(relateTo_events)
+                print(f'For {day=}, related events: {len(relateTo_events)}, slews: {len(slew_events)}')
 
             if len(slew_events) == 0:
                 continue
@@ -292,8 +333,12 @@ class SlewData:
         return max_frame
     
 # plotting functions 
-# generate histograms for max values during slews
+# 
 def plot_max_hist(max_frame, limitsBool, logBool, fit, padding):
+    """
+    Generate a histogram of maximum velocity, acceleration, and jerk for each
+    slew in both azimuth and elevation
+    """
     padding = str(padding)
     num_slews= str(max_frame.shape[0])
     design_color = "green"
@@ -305,16 +350,18 @@ def plot_max_hist(max_frame, limitsBool, logBool, fit, padding):
     fig,axs = plt.subplots(3, 2, dpi=175, figsize=(10,5), sharex=False)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     if len(np.unique(max_frame['day'])) > 1:
-        plt.suptitle(f"Maximums for {first_day} - {last_day} -- Slews: " + num_slews + "\n Fit: " + fit + " -- Padding: " + padding, fontsize = 14)
+        plt.suptitle(f"Maximums for {first_day} - {last_day} -- Slews: " + num_slews + /
+                     "\n Fit: " + fit + " -- Padding: " + padding, fontsize = 14)
     else:
-        plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + "\nFit: " + fit + " -- Padding: " + padding, fontsize = 14)
+        plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + /
+                     "\nFit: " + fit + " -- Padding: " + padding, fontsize = 14)
 
     # bins for each graph
-    velbins_az = np.linspace(0, max_frame["az_vel"].max(), 100) 
+    velbins_az = np.linspace(0, max_frame["az_vel"].max(), 75) 
     accbins_az = np.linspace(0, max_frame["az_acc"].max(), 100)
     jerkbins_az = np.linspace(0, max_frame["az_jerk"].max(), 100)
     
-    velbins_el = np.linspace(0, max_frame["el_vel"].max(), 100) 
+    velbins_el = np.linspace(0, max_frame["el_vel"].max(), 75) 
     accbins_el = np.linspace(0, max_frame["el_acc"].max(), 100)
     jerkbins_el = np.linspace(0, max_frame["el_jerk"].max(), 100)
     
@@ -386,13 +433,11 @@ def plotHistElDesignLim(design_input, max_input, ymin, ymax, design_color, max_c
     plt.vlines(el_limit_dict[design_input], ymin=ymin, ymax=ymax, color = design_color)
     plt.vlines(el_limit_dict[max_input], ymin=ymin, ymax=ymax, color = max_color)
 
-# Generate plots for a slew profile in both azimuth and elevation
-# for position, velocity, acceleration, and jerk
-# limitsBool when set to true adds spec limits to graphs
-# TO-DO: add bool to offer choice between showing plot or saving plot to a file
-# TO-DO: add legend to indicate fit data vs real data
-
-def slew_profile_plot(actual_az_frame, actual_el_frame, spline_frame, dayObs, slew_index, limitsBool):
+def slew_profile_plot(actual_az_frame, actual_el_frame, spline_frame, dayObs, slew_index, limitsBool, min_ylims = plot_range_dict):
+    """
+    Generate plots for a slew profile in both azimuth and elevation 
+    for position, velocity, acceleration, and jerk
+    """
     # create a spline frame for a single slew
     actual_az_slew = actual_az_frame.loc[((actual_az_frame['day']==dayObs) & (actual_az_frame['slew_index']==slew_index))]
     actual_el_slew = actual_el_frame.loc[((actual_el_frame['day']==dayObs) & (actual_el_frame['slew_index']==slew_index))]
@@ -427,77 +472,79 @@ def slew_profile_plot(actual_az_frame, actual_el_frame, spline_frame, dayObs, sl
     opacity = 0.5
     
     plt.subplot(4,2,1)
-    plt.scatter(azActualTimes, actual_az_slew['azPosition'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
-    plt.plot(azRelativeTimes, slew_frame['azPosition'], lw=line_width, color=az_color, label='Spline fit')
+    plt.scatter(azActualTimes, actual_az_slew['azPosition'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='data')
+    plt.plot(azRelativeTimes, slew_frame['azPosition'], lw=line_width, color=az_color, label='fit')
     plt.title(f"Azimuth")
     plt.ylabel("Position\n[deg]")
-    if slew_frame['azPosition'].max()-slew_frame['azPosition'].min() < 1:
+    if (slew_frame['azPosition'].max()-slew_frame['azPosition'].min() < min_ylims["az_pos"]):
         meanval = slew_frame['azPosition'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["az_pos"]/2), meanval+(min_ylims["az_pos"]/2))
+    plt.legend()
 
     plt.subplot(4,2,2)
-    plt.scatter(elActualTimes, actual_el_slew['elPosition'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
-    plt.plot(elRelativeTimes, slew_frame['elPosition'], lw=line_width, color=el_color, label='Spline fit')
+    plt.scatter(elActualTimes, actual_el_slew['elPosition'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='data')
+    plt.plot(elRelativeTimes, slew_frame['elPosition'], lw=line_width, color=el_color, label='fit')
     plt.title(f"Elevation")
-    if slew_frame['elPosition'].max()-slew_frame['elPosition'].min() < 1:
+    if (slew_frame['elPosition'].max()-slew_frame['elPosition'].min() < min_ylims["el_pos"]):
         meanval = slew_frame['elPosition'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["el_pos"]/2), meanval+(min_ylims["el_pos"]/2))
+    plt.legend()
 
     plt.subplot(4,2,3)
-    plt.scatter(azActualTimes, actual_az_slew['azVelocity'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
-    plt.plot(azRelativeTimes, slew_frame['azVelocity'], lw=line_width, color=az_color, label='Spline fit')
+    plt.scatter(azActualTimes, actual_az_slew['azVelocity'], marker=mark, color=mark_color,alpha=opacity, s=mark_size)
+    plt.plot(azRelativeTimes, slew_frame['azVelocity'], lw=line_width, color=az_color)
     if limitsBool == True:
         plotAzDesignlim("design_velocity", "max_velocity", azRelativeTimes.iloc[[0]], azRelativeTimes.iloc[[-1]], design_color, max_color)
     plt.ylabel("Velocity\n[deg/sec]")
-    if slew_frame['azVelocity'].max()-slew_frame['azVelocity'].min() < 1:
+    if (slew_frame['azVelocity'].max()-slew_frame['azVelocity'].min() < min_ylims["az_vel"]) & (limitsBool == False):
         meanval = slew_frame['azVelocity'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["az_vel"]/2), meanval+(min_ylims["az_vel"]/2))
 
     plt.subplot(4,2,4)
-    plt.scatter(elActualTimes, actual_el_slew['elVelocity'], marker=mark, color=mark_color,alpha=opacity, s=mark_size, label='Measured points')
-    plt.plot(elRelativeTimes, slew_frame['elVelocity'], lw=line_width, color=el_color, label='Spline fit')
+    plt.scatter(elActualTimes, actual_el_slew['elVelocity'], marker=mark, color=mark_color,alpha=opacity, s=mark_size)
+    plt.plot(elRelativeTimes, slew_frame['elVelocity'], lw=line_width, color=el_color)
     if limitsBool == True:
         plotElDesignlim("design_velocity", "max_velocity", elRelativeTimes.iloc[[0]], elRelativeTimes.iloc[[-1]], design_color, max_color)
-    if slew_frame['elVelocity'].max()-slew_frame['elVelocity'].min() < 1:
+    if (slew_frame['elVelocity'].max()-slew_frame['elVelocity'].min() < min_ylims["el_vel"]) & (limitsBool == False):
         meanval = slew_frame['elVelocity'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["el_vel"]/2), meanval+(min_ylims["el_vel"]/2))
 
     plt.subplot(4,2,5)
-    plt.plot(azRelativeTimes, slew_frame['azAcceleration'], lw=line_width, color=az_color, label='Spline fit')
+    plt.plot(azRelativeTimes, slew_frame['azAcceleration'], lw=line_width, color=az_color)
     if limitsBool == True:
         plotAzDesignlim("design_acceleration", "max_acceleration", azRelativeTimes.iloc[[0]], azRelativeTimes.iloc[[-1]], design_color, max_color)
     plt.ylabel("Acceleration\n[deg/sec$^2$]")
-    if slew_frame['azAcceleration'].max()-slew_frame['azAcceleration'].min() < 1:
+    if (slew_frame['azAcceleration'].max()-slew_frame['azAcceleration'].min() < min_ylims["az_acc"]) & (limitsBool == False):
         meanval = slew_frame['azAcceleration'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["az_acc"]/2), meanval+(min_ylims["az_acc"]/2))
 
     plt.subplot(4,2,6)
-    plt.plot(elRelativeTimes, slew_frame['elAcceleration'], lw=line_width, color=el_color, label='Spline fit')
+    plt.plot(elRelativeTimes, slew_frame['elAcceleration'], lw=line_width, color=el_color)
     if limitsBool == True:
         plotElDesignlim("design_acceleration", "max_acceleration", elRelativeTimes.iloc[[0]], elRelativeTimes.iloc[[-1]], design_color, max_color)
-    if slew_frame['elAcceleration'].max()-slew_frame['elAcceleration'].min() < 1:
+    if (slew_frame['elAcceleration'].max()-slew_frame['elAcceleration'].min() < min_ylims["el_acc"]) & (limitsBool == False):
         meanval = slew_frame['elAcceleration'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["el_acc"]/2), meanval+(min_ylims["el_acc"]/2))
 
     plt.subplot(4,2,7)
-    plt.plot(azRelativeTimes, slew_frame['azJerk'], lw=line_width, color=az_color, label='Spline fit')
+    plt.plot(azRelativeTimes, slew_frame['azJerk'], lw=line_width, color=az_color)
     if limitsBool == True:
         plotAzDesignlim("design_jerk", "max_jerk", azRelativeTimes.iloc[[0]], azRelativeTimes.iloc[[-1]], design_color, max_color)
     plt.ylabel("Jerk\n[deg/sec$^3$]")
     plt.xlabel("time since slew start [sec]")
-    if slew_frame['azJerk'].max()-slew_frame['azJerk'].min() < 1:
+    if (slew_frame['azJerk'].max()-slew_frame['azJerk'].min() < min_ylims["az_jerk"]) & (limitsBool == False):
         meanval = slew_frame['azJerk'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["az_jerk"]/2), meanval+(min_ylims["az_jerk"]/2))
 
     plt.subplot(4,2,8)
-    plt.plot(elRelativeTimes, slew_frame['elJerk'], lw=line_width, color=el_color, label='Spline fit')
+    plt.plot(elRelativeTimes, slew_frame['elJerk'], lw=line_width, color=el_color)
     if limitsBool == True:
         plotElDesignlim("design_jerk", "max_jerk", elRelativeTimes.iloc[[0]], elRelativeTimes.iloc[[-1]], design_color, max_color)
     plt.xlabel("time since slew start [sec]")
-    if slew_frame['elJerk'].max()-slew_frame['elJerk'].min() < 1:
+    if (slew_frame['elJerk'].max()-slew_frame['elJerk'].min() < min_ylims["el_jerk"]) & (limitsBool == False):
         meanval = slew_frame['elJerk'].mean()
-        plt.ylim(meanval-1, meanval+1)
+        plt.ylim(meanval-(min_ylims["el_jerk"]/2), meanval+(min_ylims["el_jerk"]/2))
     
-    plt.subplots_adjust(wspace=0.15, hspace=0.20)
+    plt.subplots_adjust(wspace=0.20, hspace=0.20)
 
     plt.show()
