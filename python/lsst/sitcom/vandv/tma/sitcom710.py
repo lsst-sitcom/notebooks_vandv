@@ -350,10 +350,10 @@ def plot_max_hist(max_frame, limitsBool, logBool, fit, padding):
     fig,axs = plt.subplots(3, 2, dpi=175, figsize=(10,5), sharex=False)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     if len(np.unique(max_frame['day'])) > 1:
-        plt.suptitle(f"Maximums for {first_day} - {last_day} -- Slews: " + num_slews + /
+        plt.suptitle(f"Maximums for {first_day} - {last_day} -- Slews: " + num_slews + \
                      "\n Fit: " + fit + " -- Padding: " + padding, fontsize = 14)
     else:
-        plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + /
+        plt.suptitle(f"Maximums for {first_day} -- Slews: " + num_slews + \
                      "\nFit: " + fit + " -- Padding: " + padding, fontsize = 14)
 
     # bins for each graph
