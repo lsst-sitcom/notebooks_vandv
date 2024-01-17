@@ -564,9 +564,9 @@ def snapshot_forces_fa_map(
 
     # Fill plot with empty actuators
     data[data == 0] = np.nan
-    empty_x = xact[np.isnan(data)]
-    empty_y = yact[np.isnan(data)]
-    ax.scatter(empty_x, empty_y, c="k", s=size, edgecolors="k", alpha=0.25)
+    for x, y in zip(xact[np.isnan(data)], yact[np.isnan(data)]):
+        empty_actuator = plt.Circle((x, y), size / 550, fc="k")
+        ax.add_patch(empty_actuator)
 
     if np.all(np.isnan(data)):
         raise ValueError("No valid data in the array")
