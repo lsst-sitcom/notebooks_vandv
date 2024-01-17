@@ -45,7 +45,7 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
         If `None`, it falls back to
         `$HOME/notebooks/lsst-ts/ts_m1m3support/SettingFiles/Tables/`
     as_array : bool
-        Boolean indicating if the lut values should be an array. 
+        Boolean indicating if the lut values should be an array.
         Should be True if passing more than one value for elevation.
 
     Returns
@@ -75,14 +75,14 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
     n = len(lut_el.index)
     elevation_forces = np.zeros((n, len(elevation))) if as_array else np.zeros(n)
     zenith_angle = 90.0 - elevation
-    
+
     for i in range(n):
         coeff = [lut_el["Coefficient %d" % j][i] for j in range(5, -1, -1)]
         mypoly = np.poly1d(coeff)
         elevation_forces[i] = mypoly(zenith_angle)
 
-
     return elevation_forces if as_array else np.array(elevation_forces)
+
 
 def lut_elevation_xforces(elevation, lut_path=None, as_array=False):
     """
@@ -102,7 +102,9 @@ def lut_elevation_xforces(elevation, lut_path=None, as_array=False):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationXTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
+    return lut_elevation_forces(
+        elevation, lut_file, lut_path=lut_path, as_array=as_array
+    )
 
 
 def lut_elevation_yforces(elevation, lut_path=None, as_array=False):
@@ -123,7 +125,9 @@ def lut_elevation_yforces(elevation, lut_path=None, as_array=False):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationYTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
+    return lut_elevation_forces(
+        elevation, lut_file, lut_path=lut_path, as_array=as_array
+    )
 
 
 def lut_elevation_zforces(elevation, lut_path=None, as_array=False):
@@ -144,7 +148,9 @@ def lut_elevation_zforces(elevation, lut_path=None, as_array=False):
     array : the zForces calculated from the lut.
     """
     lut_file = "ElevationZTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
+    return lut_elevation_forces(
+        elevation, lut_file, lut_path=lut_path, as_array=as_array
+    )
 
 
 def plot_m1m3_and_elevation(df, prefix=None):
@@ -161,7 +167,9 @@ def plot_m1m3_and_elevation(df, prefix=None):
         M1M3 (lsst.sal.MTM1M3.forceActuatorData.zForce).
     """
     actuators_ids = [129, 229, 329, 429]
-    actuators_ids_idx = [actuator_id_to_index(actuator_id) for actuator_id in actuators_ids]
+    actuators_ids_idx = [
+        actuator_id_to_index(actuator_id) for actuator_id in actuators_ids
+    ]
     colors = ["C0", "C1", "C2", "C3"]
 
     # Prepare figure name
@@ -260,7 +268,6 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
 
     fx, fy, fz = {}, {}, {}
     for key, topic in forces.items():
-
         print(f"Query {topic}")
         await asyncio.sleep(1)
 
@@ -523,17 +530,17 @@ def snapshot_zforces_overview(
     yact = -np.float64([fa.y_position for fa in FATable])
 
     data = series[cols]
-    
+
     # Fill plot with empty actuators
     data[data == 0] = np.nan
     for x, y in zip(xact[np.isnan(data)], yact[np.isnan(data)]):
-        empty_actuator = plt.Circle((x, y), size/550, fc="k")
+        empty_actuator = plt.Circle((x, y), size / 550, fc="k")
         ax.add_patch(empty_actuator)
-    
+
     if np.all(np.isnan(data)):
         raise ValueError("No valid data in the array")
 
-    im = ax.scatter(xact, yact, c=data, s=size)  
+    im = ax.scatter(xact, yact, c=data, s=size)
 
     if show_ids:
         for x, y, _id in zip(xact, yact, ids):

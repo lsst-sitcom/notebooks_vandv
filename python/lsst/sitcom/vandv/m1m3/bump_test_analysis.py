@@ -7,17 +7,19 @@ from scipy.optimize import minimize
 
 from lsst.summit.utils.efdUtils import getEfdData
 from lsst.ts.xml.enums.MTM1M3 import BumpTest
-from lsst.ts.xml.tables.m1m3 import (
-    actuator_id_to_index,
-    force_actuator_from_id,
-    FATable,
-    FAIndex,
-)
+from lsst.ts.xml.tables.m1m3 import force_actuator_from_id
+
 
 BUMP_TEST_DURATION = 14.0  # seconds
 
 
-def plot_bump_test_actuator_delay(fig, client, bt_results, fa_id, bt_index=0):
+def plot_bump_test_actuator_delay(
+    fig: plt.Figure,
+    client: object,
+    bt_results: pd.DataFrame,
+    fa_id: int,
+    bt_index: int = 0,
+) -> (float, float):
     """
     Plot the bump test actuator delay.
 
@@ -212,16 +214,20 @@ def plot_bump_test_actuator_delay(fig, client, bt_results, fa_id, bt_index=0):
     return primary_delay, secondary_delay
 
 
-def match_function(params, args):
+def match_function(params: list, args: list) -> float:
     """
     Determines best shift to match up applied and measured forces
 
-    Args:
-        params (list): List of parameters for the shift
-        args (list): List of arguments containing the measured and applied forces
+    Parameters
+    ----------
+    params : list
+        List of parameters for the shift
+    args : list
+        List of arguments containing the measured and applied forces
 
-    Returns:
-        float: Sum of squared differences between the applied and shifted forces
+    Returns
+    -------
+    float: Sum of squared differences between the applied and shifted forces
     """
     [measured_t, measured_f, applied_t, applied_f] = args
     shifted_f = np.interp(applied_t + params[0], measured_t, measured_f)
@@ -236,45 +242,58 @@ def get_best_shift(
     mforces: np.array,
 ) -> (float, np.array):
     """
-    Calculates the best shift value and shifted primary forces for a given set of input arrays.
+    Calculates the best shift value and shifted primary forces for a given set
+    of input arrays.
 
-    Parameters:
-    atime (np.array): Array of timestamps for the actual forces.
-    aforces (np.array): Array of actual forces.
-    mtime (np.array): Array of timestamps for the measured forces.
-    mforces (np.array): Array of measured forces.
+    Parameters
+    ----------
+    atime : np.array
+        Array of timestamps for the actual forces.
+    aforces : np.array
+        Array of actual forces.
+    mtime : np.array
+        Array of timestamps for the measured forces.
+    mforces : np.array
+        Array of measured forces.
 
-    Returns:
-    tuple: A tuple containing the primary delay (float) and the shifted primary forces (np.array).
+    Returns
+    -------
+    delay : float
+        The delay in milliseconds.
+    shifted_forces : np.array
+        The shifted primary forces.
     """
     param_0 = [0.10]
     args_0 = [mtime, mforces, atime, aforces]
     best_shift = minimize(match_function, param_0, args=args_0, method="Powell")
-    primary_delay = best_shift.x[0] * 1000.0
-    shifted_primary_forces = np.interp(atime + best_shift.x[0], mtime, mforces)
+    delay = best_shift.x[0] * 1000.0
+    shifted_forces = np.interp(atime + best_shift.x[0], mtime, mforces)
 
-    return primary_delay, shifted_primary_forces
+    return delay, shifted_forces
 
 
 def plot_primary_forces(
-    ax,
+    ax: plt.Axes,
     app_times: np.array,
     app_forces: np.array,
     meas_times: np.array,
     meas_forces: np.array,
-) -> plt.Axes:
+):
     """
     Plot the primary forces.
 
-    Parameters:
-    - ax: The matplotlib axes object to plot on.
-    - app_times: An array of applied force times.
-    - app_forces: An array of applied forces.
-    - meas_times: An array of measured force times.
-    - meas_forces: An array of measured forces.
-
-    Returns:
-    - ax: The matplotlib axes object with the plot.
+    Parameters
+    ----------
+    ax : plt.Axes
+        The matplotlib axes object to plot on.
+    app_times : np.array
+        An array of applied force times.
+    app_forces : np.array
+        An array of applied forces.
+    meas_times : np.array
+        An array of measured force times.
+    meas_forces : np.array
+        An array of measured forces.
     """
     ax.set_title("Primary - Z")
     ax.plot(app_times, app_forces, label="Applied")
@@ -288,16 +307,28 @@ def plot_primary_forces(
     ax.legend()
 
 
-def plot_shifted_primary_forces(ax, app_times, app_forces, force_delay, shift_forces):
+def plot_shifted_primary_forces(
+    ax: plt.Axes,
+    app_times: np.array,
+    app_forces: np.array,
+    force_delay: float,
+    shift_forces: np.array,
+) -> None:
     """
     Plot the shifted primary forces.
 
-    Parameters:
-    - ax: The matplotlib axes object to plot on.
-    - app_times: The array of applied times.
-    - app_forces: The array of applied forces.
-    - force_delay: The delay in milliseconds.
-    - shift_forces: The array of shifted measured forces.
+    Parameters
+    ----------
+    ax : plt.Axes
+        The matplotlib axes object to plot on.
+    app_times : np.array
+        The array of applied times.
+    app_forces : np.array
+        The array of applied forces.
+    force_delay : float
+        The delay in milliseconds.
+    shift_forces : np.array
+        The array of shifted measured forces.
     """
     ax.plot(app_times, app_forces, label="Applied")
     ax.plot(app_times, shift_forces, label="Shifted Measured")
@@ -313,21 +344,30 @@ def plot_shifted_primary_forces(ax, app_times, app_forces, force_delay, shift_fo
 
 
 def plot_secondary_forces(
-    ax, sec_app_times, sec_app_forces, sec_meas_times, sec_meas_forces, secondary_name
-):
+    ax: plt.Axes,
+    sec_app_times: np.array,
+    sec_app_forces: np.array,
+    sec_meas_times: np.array,
+    sec_meas_forces: np.array,
+    secondary_name: str,
+) -> None:
     """
     Plot the applied and measured forces for the secondary mirror.
 
-    Parameters:
-    - ax: The matplotlib Axes object to plot on.
-    - sec_app_times: The time values for the applied forces.
-    - sec_app_forces: The applied forces for the secondary mirror.
-    - sec_meas_times: The time values for the measured forces.
-    - sec_meas_forces: The measured forces for the secondary mirror.
-    - secondary_name: The name of the secondary mirror.
-
-    Returns:
-    None
+    Parameters
+    ----------
+    ax : plt.Axes
+        The matplotlib Axes object to plot on.
+    sec_app_times : np.array
+        The time values for the applied forces.
+    sec_app_forces : np.array
+        The applied forces for the secondary mirror.
+    sec_meas_times : np.array
+        The time values for the measured forces.
+    sec_meas_forces : np.array
+        The measured forces for the secondary mirror.
+    secondary_name : np.array
+        The name of the secondary mirror.
     """
     ax.plot(sec_app_times, sec_app_forces, label="Applied")
     ax.plot(sec_meas_times, sec_meas_forces / np.sqrt(2.0), label="Measured")
@@ -342,18 +382,30 @@ def plot_secondary_forces(
 
 
 def plot_bump_test_actuator_delay_secondary(
-    ax, sec_app_times, sec_app_forces, sec_sft_forces, secondary_name, secondary_delay
-):
+    ax: plt.Axes,
+    sec_app_times: np.array,
+    sec_app_forces: np.array,
+    sec_sft_forces: np.array,
+    secondary_name: str,
+    secondary_delay: float,
+) -> None:
     """
     Plots the bump test results for the secondary actuator delay.
 
-    Parameters:
-    - ax (matplotlib.axes.Axes): The axes object to plot on.
-    - sec_app_times (array-like): The time values for the applied forces.
-    - sec_app_forces (array-like): The applied forces.
-    - sec_sft_forces (array-like): The shifted measured forces.
-    - secondary_name (str): The name of the secondary actuator.
-    - secondary_delay (float): The delay of the secondary actuator in milliseconds.
+    Parameters
+    __________
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    sec_app_times : array-like
+        The time values for the applied forces.
+    sec_app_forces : array-like
+        The applied forces.
+    sec_sft_forces : array-like
+        The shifted measured forces.
+    secondary_name : str
+        The name of the secondary actuator.
+    secondary_delay : float
+        The delay of the secondary actuator in milliseconds.
     """
     ax.plot(sec_app_times, sec_app_forces, label="Applied")
     ax.plot(
