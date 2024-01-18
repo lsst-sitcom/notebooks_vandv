@@ -212,11 +212,8 @@ def getIMSdata(slews, i_slew, postPadding):
                         postPadding = postPadding)
     return df_ims
     
-def runTestSettlingTime(dayObs, postPadding, block, outdir):
+def runTestSettlingTime(dayObs, postPadding, block, outdir, f):
     
-    client = makeEfdClient()
-    f = open("SITCOM_1172.log","a")
-
     req_delta_t = 3 ## seconds after slew
     req_rms_position = 2e-3 ## mm, tolerance from repeatability requirement for IMS positional
     req_rms_rotation = 3e-5 ## degrees, tolerance from repeatability requirement for IMS rotational
@@ -270,9 +267,9 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir):
                                                 imsColumn=col, rmsReq=req, 
                                                 req_delta_t=req_delta_t, chi2prob=0.999)
             if settle_interval >= 0:
-                logMessage(f"{col} settled in {settle_interval:.2f} s")
+                logMessage(f"{col} settled in {settle_interval:.2f} s",f)
             else:
-                logMessage(f"{col} not settled in {postPadding} s")
+                logMessage(f"{col} not settled in {postPadding} s",f)
 
         if i > 10:
             break
@@ -294,13 +291,15 @@ def main():
     if not os.path.exists(options.outdir):
         os.makedirs(options.outdir)
 
+    f = open(options.outdir+"/SITCOM_1172.log","a")
+
     c = datetime.now()
     timeStamp = c.strftime('%H:%M:%S')
-    
-    logMessage(f"Running runTestSettlingTime at {timeStamp}")
-    result = runTestSettlingTime(options.dayObs, options.postPadding, options.block, options.outdir)
+    logMessage(f"Running runTestSettlingTime at {timeStamp}",f)
+
+    result = runTestSettlingTime(options.dayObs, options.postPadding, options.block, options.outdir, f)
         
-    logMessage(f"Test result {result}. Check outputs in {options.outdir}")
+    logMessage(f"Test result {result}. Check outputs in {options.outdir}",f)
         
 if __name__ == "__main__":
     main()
