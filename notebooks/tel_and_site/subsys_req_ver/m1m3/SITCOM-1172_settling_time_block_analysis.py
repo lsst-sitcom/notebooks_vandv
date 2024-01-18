@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from optparse import OptionParser
+from datetime import datetime
 
 from astropy.time import Time, TimezoneInfo
 from scipy import stats
@@ -269,9 +270,9 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir):
                                                 imsColumn=col, rmsReq=req, 
                                                 req_delta_t=req_delta_t, chi2prob=0.999)
             if settle_interval >= 0:
-                print(f"{col} settled in {settle_interval:.2f} s")
+                logMessage(f"{col} settled in {settle_interval:.2f} s")
             else:
-                print(f"{col} not settled in {postPadding} s")
+                logMessage(f"{col} not settled in {postPadding} s")
 
         if i > 10:
             break
@@ -293,10 +294,13 @@ def main():
     if not os.path.exists(options.outdir):
         os.makedirs(options.outdir)
 
-    print("Running runTestSettlingTime")
+    c = datetime.now()
+    timeStamp = c.strftime('%H:%M:%S')
+    
+    logMessage(f"Running runTestSettlingTime at {timeStamp}")
     result = runTestSettlingTime(options.dayObs, options.postPadding, options.block, options.outdir)
         
-    print(f"Test result {result}. Check outputs in {options.outdir}")
+    logMessage(f"Test result {result}. Check outputs in {options.outdir}")
         
 if __name__ == "__main__":
     main()
