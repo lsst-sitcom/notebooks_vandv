@@ -250,26 +250,27 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f):
     print(f"Of the {len(events)} events, {len(blockEvents)} relate to block {block}")
 
     for i in range(len(blockEvents)):
-        single_slew = blockEvents[i].seqNum        
-        logMessage(f'Will look at slew {single_slew}',f)
-        t0,t1 = getSlewTimes(slews, single_slew)
-        df_ims = getIMSdata(slews, single_slew, postPadding)
-        df_ims = df_ims[all_columns]
-        # Convert meter to milimeter 
-        df_ims[pos_columns] = df_ims[pos_columns] * 1e3        
-        for col in all_columns:
-            if col in pos_columns:
-                req = req_rms_position
-            else:
-                req = req_rms_rotation
-            settle_interval = computeSettleTime(df_ims=df_ims, referenceTime=t1,
+        if (blockEvents[i].endReason == TMAState.TRACKING and blockEvents[i].type == TMAState.SLEWING):
+            single_slew = blockEvents[i].seqNum        
+            logMessage(f'Will look at slew {single_slew}',f)
+            t0,t1 = getSlewTimes(slews, single_slew)
+            df_ims = getIMSdata(slews, single_slew, postPadding)
+            df_ims = df_ims[all_columns]
+            # Convert meter to milimeter 
+            df_ims[pos_columns] = df_ims[pos_columns] * 1e3        
+            for col in all_columns:
+                if col in pos_columns:
+                    req = req_rms_position
+                else:
+                    req = req_rms_rotation
+                settle_interval = computeSettleTime(df_ims=df_ims, referenceTime=t1,
                                                 lo_delta_t=5,hi_delta_t=postPadding, 
                                                 imsColumn=col, rmsReq=req, 
                                                 req_delta_t=req_delta_t, chi2prob=0.999)
-            if settle_interval >= 0:
-                logMessage(f"{col} settled in {settle_interval:.2f} s",f)
-            else:
-                logMessage(f"{col} not settled in {postPadding} s",f)
+                if settle_interval >= 0:
+                    logMessage(f"{col} settled in {settle_interval:.2f} s",f)
+                else:
+                    logMessage(f"{col} not settled in {postPadding} s",f)
 
         if i > 10:
             break
