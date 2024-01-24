@@ -25,6 +25,35 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+def checkRequirement(referenceTime, df_ims, imsColumn, correctedVariable, req, f):
+    ##checks that RMS/bias are in bounds within 1s
+    ## recomputing RMS for the whole range since T0
+    rolling = 20
+    time_array = df_ims.index
+    slew_stop = Time(referenceTime).unix
+    iT0 = np.argmin(np.abs((Time(time_array).unix) - slew_stop))
+    iT1 = np.argmin(np.abs((Time(time_array).unix) - (Time(time_array).unix[iT0] + 1)))
+    targetVariable = df_ims[imsColumn][iT0:-1]
+    #rms = (targetVariable - targetVariableReference[1]).rolling(rolling).std()
+    rms = (correctedVariable).rolling(rolling).std()
+    mean = abs((correctedVariable).rolling(rolling).mean())
+    rmsAtReq = rms[iT1 - iT0]
+    meanAtReq = mean[iT1 - iT0]
+    if (all(x < req for x in rms[iT1 - iT0 : -1])) and (all(x < req for x in mean[iT1 - iT0 : -1])):
+        logMessage(f"{imsColumn} Test PASSED",f)
+        PF = True
+    else:
+        if rmsAtReq > req:
+            rmsFail = rms[iT1 - iT0]
+        if meanAtReq > req:
+            meanFail = mean[iT1 - iT0]
+        if rmsAtReq > 0:
+            logMessage(f"{imsColumn} Test FAILED in RMS by {rmsAtReq-req}",f)
+        if meanAtReq > 0:
+            logMessage(f"{imsColumn} Test FAILED in mean by {meanAtReq-req}",f)        
+        PF = False
+    return PF,rmsAtReq,meanAtReq
+
 def computeSettleTime(
     df_ims,  # input data frame
     referenceTime="2023-06-01T06:00:0Z",  # time for slew stop (T0)
@@ -34,6 +63,7 @@ def computeSettleTime(
     rmsReq=2e-3,  # requirement in appropriate units
     req_delta_t=3,  # time for settling, in seconds
     chi2prob=0.999,  # confidence level for IMS variable wrt to long term value and variance to agree
+    f="SITCOM_1172.log"
 ):
     if "Position" in imsColumn:
         units = "mm"
@@ -95,7 +125,7 @@ def computeSettleTime(
     correctedVariableCheck2 = np.square(correctedVariableCheck)
 
     # number of values where the chi2 will be computed
-    rolling = 10  # 50 is approx. 1 s
+    rolling = 30  # 50 is approx. 1 s
     # chi2 right tail probability for N=rolling dof at chi2prob CL
     crit = stats.chi2.ppf(chi2prob, rolling)
 
@@ -114,7 +144,7 @@ def computeSettleTime(
     # or rms and bias be both already 10% of requirement
     PFCheck = (chi2 < crit) | ((rms < 0.1 * rmsReq) & (mean < 0.1 * rmsReq))
     # PFCheck = (rms < 0.2 * rmsReq) & (mean < 0.5 * rmsReq)
-    rollingCheck = 10
+    rollingCheck = 30
     stabilityCheck = (
         PFCheck.rolling(rollingCheck).apply(lambda s: s.all()) > 0
     )  # true if rollingCheck consecutive true values of PFcheck
@@ -141,52 +171,12 @@ def computeSettleTime(
         else:
             settleInterval = settleInterval.total_seconds()
 
-    title = imsColumn
-    fig = plt.figure()
-    label = "Corrected " + imsColumn + "(" + units + ") difference wrt end of plot"
-    plt.plot(
-        correctedVariablePlot,
-        color="red",
-        ls="dashed",
-        lw="0.5",
-        label=label,
-    )
-    plt.plot(rms, label=f"RMS of corrected value, using {rolling} rolling values")
-    plt.plot(
-        mean,
-        ls="dashed",
-        label=f"Bias of corrected value, using {rolling} rolling values",
-    )
-    if settleTime:
-        plt.arrow(
-            settleTime,
-            1.1 * rmsReq,
-            0.0,
-            -0.5 * rmsReq,
-            width=2e-6,
-            head_length=0.5 * rmsReq,
-            label = 'Settling achieved'
-        )
-        plt.text(
-            0.5,
-            0.92,
-            "Settle time =" + " {:.2f} ".format(settleInterval) + " s",
-            transform=fig.transFigure,
-        )
-    plt.axvline(T0, lw="1.25", c="k", ls="dashed", label="Slew stop")
-    plt.axhline(-rmsReq, lw="0.75", c="k", ls="dashed", label="IMS repeatability req.")
-    plt.axhline(rmsReq, lw="0.75", c="k", ls="dashed")
-    plt.xlabel("Time [UTC]")
-    plt.ylabel(f"{imsColumn} {units}")
-    plt.ylim(-ylimMax, ylimMax)
-    fig.autofmt_xdate()
-    plt.legend(loc="upper right", fontsize="8")
-    fig.tight_layout()
+    PF,rmsAtReq,meanAtReq = checkRequirement(referenceTime, df_ims, imsColumn, correctedVariableCheck, rmsReq, f)    
 
     if not settleTime:
-        return -1
+        return True,-1,rmsAtReq,meanAtReq
 
-    return settleInterval
+    return PF, settleInterval,rmsAtReq,meanAtReq
     
 def logMessage(mess, f):
     print(mess)
@@ -196,19 +186,19 @@ def logMessage(mess, f):
         print("Could not write to log file")
     return
 
-def getSlewTimes(slews, i_slew):
+def getSlewTimes(events, i_slew):
 
-    t0 = Time(slews[i_slew].begin, format='isot', scale='utc')
+    t0 = Time(events[i_slew].begin, format='isot', scale='utc')
     t0 = pd.to_datetime(t0.value, utc=True) # astropy Time to Timestamp conversion
-    t1 = Time(slews[i_slew].end, format='isot', scale='utc')
+    t1 = Time(events[i_slew].end, format='isot', scale='utc')
     t1 = pd.to_datetime(t1.value, utc=True) # astropy Time to Timestamp conversion
 
     return (t0,t1)
 
-def getIMSdata(slews, i_slew, postPadding):
+def getIMSdata(events, i_slew, postPadding):
     client = makeEfdClient()
     df_ims = getEfdData(client, 'lsst.sal.MTM1M3.imsData', 
-                        event=slews[i_slew], 
+                        event=events[i_slew], 
                         postPadding = postPadding)
     return df_ims
     
@@ -223,7 +213,7 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f):
     events = eventMaker.getEvents(dayObs)
     
     # Define columns
-    all_columns = ["xPosition", "xRotation", "yPosition", "yRotation", "zPosition", "zRotation"]
+    all_columns = ["xPosition","yPosition","zPosition","xRotation","yRotation","zRotation"] 
     pos_columns = [c for c in all_columns if "Position" in c]
     rot_columns = [c for c in all_columns if "Rotation" in c]
 
@@ -247,33 +237,108 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f):
         if block in blockNums:
             blockEvents.append(event)
 
-    print(f"Of the {len(events)} events, {len(blockEvents)} relate to block {block}")
+    logMessage(f"Of the {len(events)} events, {len(blockEvents)} relate to block {block}", f)
 
+    rmsPosAtReqAgg = []
+    meanPosAtReqAgg = []
+    meanXPosAtReqAgg = []
+    meanYPosAtReqAgg = []
+    meanZPosAtReqAgg = []
+    rmsRotAtReqAgg = []
+    meanRotAtReqAgg = []
+
+    ignoreList = [92, 120, 274]
+   
     for i in range(len(blockEvents)):
         if (blockEvents[i].endReason == TMAState.TRACKING and blockEvents[i].type == TMAState.SLEWING):
-            single_slew = blockEvents[i].seqNum        
+            single_slew = blockEvents[i].seqNum  
+            if single_slew in ignoreList:
+                logMessage(f"Skipping {single_slew}", f)
+                continue #92 is badly identified in 20231220
             logMessage(f'Will look at slew {single_slew}',f)
-            t0,t1 = getSlewTimes(slews, single_slew)
-            df_ims = getIMSdata(slews, single_slew, postPadding)
+            t0,t1 = getSlewTimes(events, single_slew)
+            df_ims = getIMSdata(events, single_slew, postPadding)
             df_ims = df_ims[all_columns]
             # Convert meter to milimeter 
-            df_ims[pos_columns] = df_ims[pos_columns] * 1e3        
+            df_ims[pos_columns] = df_ims[pos_columns] * 1e3
+            allcolPF = True
+            fails = 0
             for col in all_columns:
                 if col in pos_columns:
                     req = req_rms_position
                 else:
                     req = req_rms_rotation
-                settle_interval = computeSettleTime(df_ims=df_ims, referenceTime=t1,
+                PF, settle_interval, rmsAtReq, meanAtReq = computeSettleTime(df_ims=df_ims,                                                            referenceTime=t1,
                                                 lo_delta_t=5,hi_delta_t=postPadding, 
                                                 imsColumn=col, rmsReq=req, 
-                                                req_delta_t=req_delta_t, chi2prob=0.999)
+                                                req_delta_t=req_delta_t, chi2prob=0.99, f = f)
                 if settle_interval >= 0:
                     logMessage(f"{col} settled in {settle_interval:.2f} s",f)
                 else:
                     logMessage(f"{col} not settled in {postPadding} s",f)
+                if PF == False:
+                    allcolPF = False
+                    fails = fails + 1
+                if col in pos_columns:
+                    rmsPosAtReqAgg.append(rmsAtReq)
+                    meanPosAtReqAgg.append(meanAtReq)
+                    if col == 'xPosition':
+                        meanXPosAtReqAgg.append(meanAtReq)
+                    if col == 'yPosition':
+                        meanYPosAtReqAgg.append(meanAtReq)
+                    if col == 'zPosition':
+                        meanZPosAtReqAgg.append(meanAtReq)
+                else:
+                    rmsRotAtReqAgg.append(rmsAtReq)
+                    meanRotAtReqAgg.append(meanAtReq)
+            if allcolPF == False:
+                logMessage(f"Event {single_slew} has {fails} failure(s)",f)
 
-        if i > 10:
-            break
+
+        #if i > 50:
+        #    break
+
+    title = f"Settle test at for block {block} on {dayObs}"
+    plt.hist(rmsPosAtReqAgg,bins=50)
+    plt.axvline(req_rms_position, lw="1.25", c="k", ls="dashed", label="Requirement")
+    plt.title(title+" position RMS")
+    plt.xlabel('IMS position RMS wrt settled, at 1 s after stop (mm)')
+    plt.legend()
+    plt.savefig(outdir+'/rms_position.png')
+
+    plt.clf()
+    plt.hist(rmsRotAtReqAgg,bins=50)
+    plt.axvline(req_rms_rotation, lw="1.25", c="k", ls="dashed", label="Requirement")
+    plt.title(title+" rotation RMS")
+    plt.xlabel('IMS rotation RMS wrt settled, at 1 s after stop (deg)')
+    plt.legend()
+    plt.savefig(outdir+'/rms_rotation.png')
+
+    plt.clf()
+    plt.hist(meanPosAtReqAgg,bins=50)
+    plt.axvline(req_rms_position, lw="1.25", c="k", ls="dashed", label="Requirement")
+    plt.title(title+" position bias")
+    plt.xlabel('IMS position BIAS wrt settled, at 1 s after stop (mm)')
+    plt.legend()
+    plt.savefig(outdir+'/mean_position.png')
+
+    plt.clf()
+    plt.hist(meanXPosAtReqAgg,bins=50,alpha=0.5,color='red',ls='dashed',label='xPosition')
+    plt.hist(meanYPosAtReqAgg,bins=50,alpha=0.5,color='green',ls='dashed',label='yPosition')
+    plt.hist(meanZPosAtReqAgg,bins=50,alpha=0.5,color='black',ls='dashed',label='zPosition')    
+    plt.axvline(req_rms_position, lw="1.25", c="k", ls="dashed", label="Requirement")
+    plt.title(title+" position bias (per axis)")
+    plt.xlabel('IMS position BIAS wrt settled, at 1 s after stop (mm)')
+    plt.legend()
+    plt.savefig(outdir+'/mean_position_xyz.png')
+
+    plt.clf()
+    plt.hist(meanRotAtReqAgg,bins=50)
+    plt.axvline(req_rms_rotation, lw="1.25", c="k", ls="dashed", label="Requirement")
+    plt.title(title+" rotation bias")
+    plt.xlabel('IMS rotation BIAS wrt settled, at 1 s after stop (deg)')
+    plt.legend()
+    plt.savefig(outdir+'/mean_rotation.png')
 
     return 0
 
