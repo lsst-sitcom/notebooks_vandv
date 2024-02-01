@@ -25,8 +25,22 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-def checkRequirement(referenceTime, df_ims, imsColumn, correctedVariable, req, f):
-    ##checks that RMS/bias are in bounds within 1s
+def checkRequirement(referenceTime, df_ims, imsColumn, correctedVariable, req, f, verbose = False):
+    '''
+    Function to check requirement for RMS and bias 1 s after slew stop
+    Parameters:
+    reference_time: slew stop time in UTC
+    df_ims: pandas data frame with IMS (Independent Measurement System of the M1M3) data
+    imsColumn: specific IMS column to analyze in this function call
+    correctedVariable: column value corrected for the value at the end of the window, determined before the function call
+    req: tolerance for IMS value to be within requirement. We will apply it to the RMS and bias of the value, with respect to the value at reference_t + post_delta_t
+    f: file name for logs
+    verbose: flag for verbosity in outputs
+    Returns:
+    PF: PASS/FAIL for this column and event, at 1 second after slew stop, checking RMS and bias
+    rmsAtReq: value of the RMS (jitter) of the column value, using a rolling check, after the slew stop
+    meanAtReq: value of the bias (in absolute value) of the column value, using a rolling check, after the slew stop
+    '''
     ## recomputing RMS for the whole range since T0
     rolling = 20
     time_array = df_ims.index
@@ -40,17 +54,20 @@ def checkRequirement(referenceTime, df_ims, imsColumn, correctedVariable, req, f
     rmsAtReq = rms[iT1 - iT0]
     meanAtReq = mean[iT1 - iT0]
     if (all(x < req for x in rms[iT1 - iT0 : -1])) and (all(x < req for x in mean[iT1 - iT0 : -1])):
-        logMessage(f"{imsColumn} Test PASSED",f)
+        if verbose:
+            logMessage(f"{imsColumn} Test PASSED",f)
         PF = True
     else:
         if rmsAtReq > req:
-            rmsFail = rms[iT1 - iT0]
+            #rmsFail = rms[iT1 - iT0]
+            if verbose:
+                logMessage(f"{imsColumn} Test FAILED in RMS by {rmsAtReq-req}",f)
         if meanAtReq > req:
             meanFail = mean[iT1 - iT0]
-        if rmsAtReq > 0:
-            logMessage(f"{imsColumn} Test FAILED in RMS by {rmsAtReq-req}",f)
-        if meanAtReq > 0:
-            logMessage(f"{imsColumn} Test FAILED in mean by {meanAtReq-req}",f)        
+            if verbose:
+                logMessage(f"{imsColumn} Test FAILED in mean by {meanAtReq-req}",f)        
+        #if rmsAtReq > 0:
+        #if meanAtReq > 0:
         PF = False
     return PF,rmsAtReq,meanAtReq
 
@@ -61,10 +78,29 @@ def computeSettleTime(
     hi_delta_t=30,  # in seconds
     imsColumn="xPosition",  # IMS column
     rmsReq=2e-3,  # requirement in appropriate units
-    req_delta_t=3,  # time for settling, in seconds
     chi2prob=0.999,  # confidence level for IMS variable wrt to long term value and variance to agree
-    f="SITCOM_1172.log"
+    f="SITCOM_1172.log",
+    verbose=False
 ):
+    '''
+    Function to compute settle time and PASS/FAIL for a given slew stop event
+    Parameters:
+    df_ims: pandas data frame with IMS (Independent Measurement System of the M1M3) data
+    reference_time: slew stop time in UTC
+    lo_delta_t: time window in seconds BEFORE the slew stop to retrieve data
+    hi_delta_t: time window in seconds AFTER the slew stop to retrieve data
+    imsColumn: specific IMS column to analyze in this function call
+    rmsReq: tolerance for IMS value to be within requirement. We will apply it to the RMS and bias of the value, with respect to the value at reference_t + post_delta_t
+    chi2prob: confidence level for IMS variable wrt to long term value and variance to agree
+    f: file name for logs
+    verbose: Verbosity flag of log outputs
+    Returns:
+    PF: PASS/FAIL for this column and event, at 1 second after slew stop, checking RMS and bias
+    settleInterval: the time after slew stop where the algorithm determines there is stability, independently of requirement
+    rmsAtReq: value of the RMS (jitter) of the column value, using a rolling check, after the slew stop
+    meanAtReq: value of the bias (in absolute value) of the column value, using a rolling check, after the slew stop
+    '''
+
     if "Position" in imsColumn:
         units = "mm"
         ylimMax = rmsReq + 0.005
@@ -77,11 +113,7 @@ def computeSettleTime(
 
     settleTime = False
 
-    # T0 and T1 defines the window for requirement to be met
     T0 = pd.to_datetime(referenceTime)  # this is slew stop
-    T1 = T0 + pd.to_timedelta(
-        req_delta_t, unit="s"
-    )  # this is the end of maximum req. window
     delta_window = [
         pd.Timedelta(lo_delta_t, "seconds"),
         pd.Timedelta(hi_delta_t, "seconds"),
@@ -93,16 +125,9 @@ def computeSettleTime(
     targetVariablePlot = df_ims[imsColumn][TZoom[0] : TZoom[1]]
     # targetVariableCheck takes the data from the slew stop, until the end of the plot
     targetVariableCheck = df_ims[imsColumn][T0 : TZoom[1]]
-    # targetVariableWindow takes the data from the slew stop, until the end of requirement window
-    targetVariableWindow = df_ims[imsColumn][T0:T1]
     idxT0 = df_ims.index[  # index in dataframe closest in time to slew stop
         df_ims.index.get_indexer([pd.to_datetime(T0)], method="nearest")
     ]
-    idxT1 = (
-        df_ims.index[  # index in dataframe closest in time to end of requirement window
-            df_ims.index.get_indexer([pd.to_datetime(T1)], method="nearest")
-        ]
-    )
     idxTend = df_ims.index[  # index in dataframe closest in time to end of plot
         df_ims.index.get_indexer(
             [pd.to_datetime(T0 + delta_window[1])], method="nearest"
@@ -171,7 +196,7 @@ def computeSettleTime(
         else:
             settleInterval = settleInterval.total_seconds()
 
-    PF,rmsAtReq,meanAtReq = checkRequirement(referenceTime, df_ims, imsColumn, correctedVariableCheck, rmsReq, f)    
+    PF,rmsAtReq,meanAtReq = checkRequirement(referenceTime, df_ims, imsColumn, correctedVariableCheck, rmsReq, f, verbose)    
 
     if not settleTime:
         return True,-1,rmsAtReq,meanAtReq
@@ -202,11 +227,20 @@ def getIMSdata(events, i_slew, postPadding):
                         postPadding = postPadding)
     return df_ims
     
-def runTestSettlingTime(dayObs, postPadding, block, outdir, f):
+def runTestSettlingTime(dayObs, postPadding, block, outdir, f, verbose):
+    '''
+    Function to run the settling time statistics test over a complete block on a given night
+    Parameters:
+    dayObs: corresponding observation day to analyze
+    postPadding: number of seconds after slew stop in which to perform the analysis
+    block: observation block number
+    outdir: directory to store plots and log outputs
+    f: file handle for log output 
+    verbose: flag for output verbosity
+    '''
     
-    req_delta_t = 3 ## seconds after slew
     req_rms_position = 2e-3 ## mm, tolerance from repeatability requirement for IMS positional
-    req_rms_rotation = 3e-5 ## degrees, tolerance from repeatability requirement for IMS rotational
+    req_rms_rotation = 3e-5 ## degrees (1arcsec is 27e-5), tolerance from repeatability requirement for IMS rotational
 
     # Select data from a given date
     eventMaker = TMAEventMaker()
@@ -247,31 +281,31 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f):
     rmsRotAtReqAgg = []
     meanRotAtReqAgg = []
 
-    ignoreList = [92, 120, 274]
+    ignoreList = [92, 120, 274] #these are specific seqNums to ignore 
    
     for i in range(len(blockEvents)):
         if (blockEvents[i].endReason == TMAState.TRACKING and blockEvents[i].type == TMAState.SLEWING):
             single_slew = blockEvents[i].seqNum  
             if single_slew in ignoreList:
                 logMessage(f"Skipping {single_slew}", f)
-                continue #92 is badly identified in 20231220
+                continue #e.g. 92 is badly identified in 20231220
             logMessage(f'Will look at slew {single_slew}',f)
             t0,t1 = getSlewTimes(events, single_slew)
             df_ims = getIMSdata(events, single_slew, postPadding)
             df_ims = df_ims[all_columns]
             # Convert meter to milimeter 
             df_ims[pos_columns] = df_ims[pos_columns] * 1e3
-            allcolPF = True
+            allcolPF = True #flag to detect whether any column has failed the test
             fails = 0
             for col in all_columns:
                 if col in pos_columns:
                     req = req_rms_position
                 else:
                     req = req_rms_rotation
-                PF, settle_interval, rmsAtReq, meanAtReq = computeSettleTime(df_ims=df_ims,                                                            referenceTime=t1,
+                PF, settle_interval, rmsAtReq, meanAtReq = computeSettleTime(df_ims=df_ims,                                                              referenceTime=t1, 
                                                 lo_delta_t=5,hi_delta_t=postPadding, 
                                                 imsColumn=col, rmsReq=req, 
-                                                req_delta_t=req_delta_t, chi2prob=0.99, f = f)
+                                                chi2prob=0.99, f = f, verbose = verbose)
                 if settle_interval >= 0:
                     logMessage(f"{col} settled in {settle_interval:.2f} s",f)
                 else:
@@ -293,7 +327,6 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f):
                     meanRotAtReqAgg.append(meanAtReq)
             if allcolPF == False:
                 logMessage(f"Event {single_slew} has {fails} failure(s)",f)
-
 
         #if i > 50:
         #    break
@@ -363,7 +396,7 @@ def main():
     timeStamp = c.strftime('%H:%M:%S')
     logMessage(f"Running runTestSettlingTime at {timeStamp}",f)
 
-    result = runTestSettlingTime(options.dayObs, options.postPadding, options.block, options.outdir, f)
+    result = runTestSettlingTime(options.dayObs, options.postPadding, options.block, options.outdir, f, verbose = True)
         
     logMessage(f"Test result {result}. Check outputs in {options.outdir}",f)
         
