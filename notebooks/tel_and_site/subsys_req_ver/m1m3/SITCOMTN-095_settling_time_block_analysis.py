@@ -59,15 +59,11 @@ def checkRequirement(referenceTime, df_ims, imsColumn, correctedVariable, req, f
         PF = True
     else:
         if rmsAtReq > req:
-            #rmsFail = rms[iT1 - iT0]
             if verbose:
                 logMessage(f"{imsColumn} Test FAILED in RMS by {rmsAtReq-req}",f)
         if meanAtReq > req:
-            meanFail = mean[iT1 - iT0]
             if verbose:
                 logMessage(f"{imsColumn} Test FAILED in mean by {meanAtReq-req}",f)        
-        #if rmsAtReq > 0:
-        #if meanAtReq > 0:
         PF = False
     return PF,rmsAtReq,meanAtReq
 
@@ -280,6 +276,8 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f, verbose):
     meanZPosAtReqAgg = []
     rmsRotAtReqAgg = []
     meanRotAtReqAgg = []
+    settleTimePosAgg = []
+    settleTimeRotAgg = []
 
     ignoreList = [92, 120, 274] #these are specific seqNums to ignore 
    
@@ -302,12 +300,12 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f, verbose):
                     req = req_rms_position
                 else:
                     req = req_rms_rotation
-                PF, settle_interval, rmsAtReq, meanAtReq = computeSettleTime(df_ims=df_ims,                                                              referenceTime=t1, 
+                PF, settleInterval, rmsAtReq, meanAtReq = computeSettleTime(df_ims=df_ims,                                                                referenceTime=t1, 
                                                 lo_delta_t=5,hi_delta_t=postPadding, 
                                                 imsColumn=col, rmsReq=req, 
                                                 chi2prob=0.99, f = f, verbose = verbose)
-                if settle_interval >= 0:
-                    logMessage(f"{col} settled in {settle_interval:.2f} s",f)
+                if settleInterval >= 0:
+                    logMessage(f"{col} settled in {settleInterval:.2f} s",f)
                 else:
                     logMessage(f"{col} not settled in {postPadding} s",f)
                 if PF == False:
@@ -322,16 +320,32 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f, verbose):
                         meanYPosAtReqAgg.append(meanAtReq)
                     if col == 'zPosition':
                         meanZPosAtReqAgg.append(meanAtReq)
+                    settleTimePosAgg.append(settleInterval)
                 else:
                     rmsRotAtReqAgg.append(rmsAtReq)
                     meanRotAtReqAgg.append(meanAtReq)
+                    settleTimeRotAgg.append(settleInterval)
             if allcolPF == False:
                 logMessage(f"Event {single_slew} has {fails} failure(s)",f)
 
-        #if i > 50:
+        #if i > 10:
         #    break
 
     title = f"Settle test at for block {block} on {dayObs}"
+    plt.hist(settleTimePosAgg,bins=50)
+    plt.title(title+" settle time")
+    plt.xlabel('Settling time (s)')
+    plt.legend()
+    plt.savefig(outdir+'/settletime_position.png')
+
+    plt.clf()    
+    plt.hist(settleTimeRotAgg,bins=50)
+    plt.title(title+" settle time")
+    plt.xlabel('Settling time (s)')
+    plt.legend()
+    plt.savefig(outdir+'/settletime_rotation.png')
+
+    plt.clf()
     plt.hist(rmsPosAtReqAgg,bins=50)
     plt.axvline(req_rms_position, lw="1.25", c="k", ls="dashed", label="Requirement")
     plt.title(title+" position RMS")
