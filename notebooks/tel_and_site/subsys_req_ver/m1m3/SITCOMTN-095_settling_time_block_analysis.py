@@ -40,22 +40,36 @@ def checkRequirement(referenceTime, df_ims, imsColumn, correctedVariable, req, f
     PF: PASS/FAIL for this column and event, at 1 second after slew stop, checking RMS and bias
     rmsAtReq: value of the RMS (jitter) of the column value, using a rolling check, after the slew stop
     meanAtReq: value of the bias (in absolute value) of the column value, using a rolling check, after the slew stop
+    settleTime: computed as latest time in which the IMS value has gone above the requirement in RMS or mean
     '''
     ## recomputing RMS for the whole range since T0
     rolling = 20
     time_array = df_ims.index
     slew_stop = Time(referenceTime).unix
-    iT0 = np.argmin(np.abs((Time(time_array).unix) - slew_stop))
-    iT1 = np.argmin(np.abs((Time(time_array).unix) - (Time(time_array).unix[iT0] + 1)))
+    iT0 = np.argmin(np.abs((Time(time_array).unix) - slew_stop)) #which index in time_array is closest to slew_stop
+    iT1 = np.argmin(np.abs((Time(time_array).unix) - (Time(time_array).unix[iT0] + 1))) #which index in time_array is closest to slew_stop + 1 second
     targetVariable = df_ims[imsColumn][iT0:-1]
     #rms = (targetVariable - targetVariableReference[1]).rolling(rolling).std()
     rms = (correctedVariable).rolling(rolling).std()
     mean = abs((correctedVariable).rolling(rolling).mean())
     rmsAtReq = rms[iT1 - iT0]
     meanAtReq = mean[iT1 - iT0]
+    krms = [index for index, x in enumerate(rms) if np.abs(x) >= req] 
+    kmean = [index for index, x in enumerate(mean) if np.abs(x) >= req]
     if (all(x < req for x in rms[iT1 - iT0 : -1])) and (all(x < req for x in mean[iT1 - iT0 : -1])):
+        #all values of RMS and mean are OK since 1 s after slew stop
         if verbose:
             logMessage(f"{imsColumn} Test PASSED",f)
+        if (krms == []) and (kmean == []): #both RMS and mean comply with requirement at all values 
+            settleTime = 0 #already settled at slew stop
+        else:
+            if krms == []: # only RMS values comply with requirement since slew stop
+                settleTime = time_array[iT0 + kmean[-1]] - time_array[iT0]
+            elif kmean == []: # only mean values comply with requirement
+                settleTime = time_array[iT0 + krms[-1]] - time_array[iT0]
+            else: # neither comply with requirement for all times since slew stop, take maximum
+                settleTime = max(time_array[iT0 + krms[-1]],time_array[iT0 + kmean[-1]]) - time_array[iT0] 
+            settleTime = settleTime.total_seconds()
         PF = True
     else:
         if rmsAtReq > req:
@@ -63,9 +77,17 @@ def checkRequirement(referenceTime, df_ims, imsColumn, correctedVariable, req, f
                 logMessage(f"{imsColumn} Test FAILED in RMS by {rmsAtReq-req}",f)
         if meanAtReq > req:
             if verbose:
-                logMessage(f"{imsColumn} Test FAILED in mean by {meanAtReq-req}",f)        
+                logMessage(f"{imsColumn} Test FAILED in mean by {meanAtReq-req}",f)  
+        if krms == []:
+            settleTime = time_array[iT0 + kmean[-1]] - time_array[iT0]
+        elif kmean == []:
+            settleTime = time_array[iT0 + krms[-1]] - time_array[iT0]
+        else:
+            settleTime = max(time_array[iT0 + krms[-1]],time_array[iT0 + kmean[-1]]) - time_array[iT0]    
+        settleTime = settleTime.total_seconds()
         PF = False
-    return PF,rmsAtReq,meanAtReq
+    logMessage(f"settleTime:{settleTime}",f)
+    return PF,rmsAtReq,meanAtReq,settleTime
 
 def computeSettleTime(
     df_ims,  # input data frame
@@ -192,12 +214,12 @@ def computeSettleTime(
         else:
             settleInterval = settleInterval.total_seconds()
 
-    PF,rmsAtReq,meanAtReq = checkRequirement(referenceTime, df_ims, imsColumn, correctedVariableCheck, rmsReq, f, verbose)    
+    PF,rmsAtReq,meanAtReq,settleIntervalReq = checkRequirement(referenceTime, df_ims, imsColumn, correctedVariableCheck, rmsReq, f, verbose)    
 
-    if not settleTime:
-        return True,-1,rmsAtReq,meanAtReq
+    #if not settleTime:
+    #    return True,-1,rmsAtReq,meanAtReq
 
-    return PF, settleInterval,rmsAtReq,meanAtReq
+    return PF, settleIntervalReq,rmsAtReq,meanAtReq
     
 def logMessage(mess, f):
     print(mess)
@@ -278,6 +300,13 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f, verbose):
     meanRotAtReqAgg = []
     settleTimePosAgg = []
     settleTimeRotAgg = []
+    failsAgg = []
+    settleTimeXPosAgg = []
+    settleTimeYPosAgg = []
+    settleTimeZPosAgg = []
+    settleTimeXRotAgg = []
+    settleTimeYRotAgg = []
+    settleTimeZRotAgg = []
 
     ignoreList = [92, 120, 274] #these are specific seqNums to ignore 
    
@@ -314,33 +343,73 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f, verbose):
                 if col in pos_columns:
                     rmsPosAtReqAgg.append(rmsAtReq)
                     meanPosAtReqAgg.append(meanAtReq)
+                    settleTimePosAgg.append(settleInterval)
                     if col == 'xPosition':
                         meanXPosAtReqAgg.append(meanAtReq)
+                        settleTimeXPosAgg.append(settleInterval)
                     if col == 'yPosition':
                         meanYPosAtReqAgg.append(meanAtReq)
+                        settleTimeYPosAgg.append(settleInterval)
                     if col == 'zPosition':
                         meanZPosAtReqAgg.append(meanAtReq)
-                    settleTimePosAgg.append(settleInterval)
+                        settleTimeZPosAgg.append(settleInterval)
                 else:
                     rmsRotAtReqAgg.append(rmsAtReq)
                     meanRotAtReqAgg.append(meanAtReq)
                     settleTimeRotAgg.append(settleInterval)
+                    if col == 'xRotation':
+                        settleTimeXRotAgg.append(settleInterval)
+                    if col == 'yRotation':
+                        settleTimeYRotAgg.append(settleInterval)
+                    if col == 'zRotation':
+                        settleTimeZRotAgg.append(settleInterval)
             if allcolPF == False:
                 logMessage(f"Event {single_slew} has {fails} failure(s)",f)
+            failsAgg.append(fails)
 
-        #if i > 10:
+        #if i > 2:
         #    break
 
-    title = f"Settle test at for block {block} on {dayObs}"
+    title = f"Settle test for block {block} on {dayObs}"
+    plt.hist(failsAgg,bins=[0,1,2,3,4,5,6,7])
+    plt.title(title+" Number of failures per event")
+    plt.ylabel('Number of events')
+    plt.xlabel('Number of failures')
+    plt.legend()
+    plt.savefig(outdir+'/nb_failures.png')
+    
+    plt.clf()
     plt.hist(settleTimePosAgg,bins=50)
-    plt.title(title+" settle time")
+    plt.title(title+" settle time for position")
+    plt.ylabel('Number of events (all axes)')
     plt.xlabel('Settling time (s)')
     plt.legend()
     plt.savefig(outdir+'/settletime_position.png')
 
+    plt.clf()
+    plt.hist(settleTimeXPosAgg,bins=50,alpha=0.5,color='red',ls='dashed',label='xPosition')
+    plt.hist(settleTimeYPosAgg,bins=50,alpha=0.5,color='green',ls='dashed',label='yPosition')
+    plt.hist(settleTimeZPosAgg,bins=50,alpha=0.5,color='black',ls='dashed',label='zPosition') 
+    plt.axvline(1, lw="1.25", c="k", ls="dashed", label="Requirement")
+    plt.title(title+" settle time (per axis)")
+    plt.xlabel('Settle time (s)')
+    plt.legend()
+    plt.savefig(outdir+'/settletime_position_xyz.png')
+
+    plt.clf()
+    plt.hist(settleTimeXRotAgg,bins=50,alpha=0.5,color='red',ls='dashed',label='xRotation')
+    plt.hist(settleTimeYRotAgg,bins=50,alpha=0.5,color='green',ls='dashed',label='yRotation')
+    plt.hist(settleTimeZRotAgg,bins=50,alpha=0.5,color='black',ls='dashed',label='zRotation') 
+    plt.axvline(1, lw="1.25", c="k", ls="dashed", label="Requirement")
+    plt.title(title+" settle time (per axis)")
+    plt.xlabel('Settle time (s)')
+    plt.legend()
+    plt.savefig(outdir+'/settletime_rotation_xyz.png')
+
     plt.clf()    
     plt.hist(settleTimeRotAgg,bins=50)
-    plt.title(title+" settle time")
+    plt.title(title+" settle time for rotation")
+    plt.ylabel('Number of events (all axes)')
     plt.xlabel('Settling time (s)')
     plt.legend()
     plt.savefig(outdir+'/settletime_rotation.png')
