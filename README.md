@@ -134,11 +134,36 @@ Here are a few quick points to keep an eye on:
 2. When writing documentation or text in notebooks, try to use [Semantic Like Breaks] for clarity.
 3. For code standards, let's use the [PEP-8] as a reference.
 4. When writing new plots/tools, consider the [Rule of Three] to avoid duplication/repetition.
+5. When writing commit messages, consider these [Best Commit Practices].
+
+### Best Practices for Writing Commit Messages
+
+When writing commit messages, adhere to the following best practices to ensure our commit history remains clean, informative, and useful for all team members. These guidelines are crucial for both creating and reviewing commits:
+
+1. **Be Clear and Concise:** Aim for short and descriptive messages that accurately reflect the changes made. Avoid vague language that could be unclear to others (or to yourself when revisiting the commit in the future).
+
+2. **Include Relevant Context:** When applicable, provide context that may help others understand the reason behind the changes.
+
+3. **Squash Related Commits:** For related changes, squash commits using `git rebase -i` or a Git GUI tool like GitKraken. Consult the [GitKraken Documentation] for guidance on squashing commits or check this video on [How to squash commits in GitKraken].
+
+4. **Amend Commit Messages if Needed:** If a message lacks clarity or misses crucial information, amend it using `git commit --amend` or using git Kraken ([Amending commit messages with GitKraken]).
+
+5. **Use Imperative Verbs:** Start your commit messages with imperative verbs like "Add", "Fix", "Change", "Remove", etc. This aligns with the convention set by Git itself.
+
+6. **Test and Proofread Before Committing:** Ensure your changes work as intended before commiting and pushing them.
+
+7. **Reviewers' Responsibility:** Reviewers should not only focus on the code changes but also ensure that commit messages are clear, informative, and adhere to these guidelines.
+
 
 [TS Development Workflow]: https://tssw-developer.lsst.io/work_management/development_workflow.html#development-workflow
 [Semantic Like Breaks]: https://sembr.org/
 [PEP-8]: https://peps.python.org/pep-0008/
 [Rule of Three]: https://en.wikipedia.org/wiki/Rule_of_three_(computer_programming)
+[Best Commit Practices]: https://www.linkedin.com/pulse/7-best-practices-writing-good-git-commitmessages-kirinyet-brian
+[GitKraken Documentation]: https://help.gitkraken.com/gitkraken-client/squash/
+[How to squash commits in GitKraken]: (https://drive.google.com/file/d/1ZXnRRny0DCEeE8fwUaaVvcUpa5iQ1wIo/view?usp=sharing)
+[Amending commit messages with GitKraken]:https://www.gitkraken.com/learn/git/problems/git-commit-amend#:~:text=Editing%20the%20message%20of%20your,message%20to%20save%20your%20changes.
+
 
 (more to come)
 
