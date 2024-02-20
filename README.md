@@ -1,17 +1,17 @@
 # Rubin Observatory SIT-Com Verification and Validation Notebook Repository
-This repository is to store and organize notebooks and any associated methods which have a Zephyr JIRA Test Case counterpart.  
-The reason for creation of this repo is to make it easier to execute each Test Case in a systematic fashion.  
+This repository is to store and organize notebooks and any associated methods which have a Zephyr JIRA Test Case counterpart.
+The reason for creation of this repo is to make it easier to execute each Test Case in a systematic fashion.
 
 To keep the size of the repository small and therefore faster to clone/manage, it is recommended to clear the notebooks of rendered content before committing via git.
 It is also recommended that notebooks and/or associated methods that may need to be used by others contain a minimal amount of documentation and/or comments to provide context and/or instructions.
 
-Some notebooks will require you to clone some extra repositories to your Nublado home folder.  
-Since every user has a different setup, the paths might be slightly different.  
-It is recommended to have all the repositories cloned under `$HOME/notebooks`.  
+Some notebooks will require you to clone some extra repositories to your Nublado home folder.
+Since every user has a different setup, the paths might be slightly different.
+It is recommended to have all the repositories cloned under `$HOME/notebooks`.
 
-You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later.  
-For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`.  
-However this is simply a recommendation and you are free to organize your folders as you please.    
+You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later.
+For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`.
+However this is simply a recommendation and you are free to organize your folders as you please.
 
 
 ## Notebooks
@@ -21,19 +21,19 @@ Please, remember to stop the Kernel and clean all the notebooks outputs before c
 The folder structure inside the `notebooks` directory should approximately reflect the organization in Zephyr JIRA.
 The folder/file organization is not set on stone, but one should consider how easy is to find the Notebook counterpart of a Test Case when placing it somewhere.
 
-Each notebook's name should start with the test case code, a dash, and short name that represent the test case.  
+Each notebook's name should start with the test case code, a dash, and short name that represent the test case.
 This will help quick assesment of each notebook's function while keeping the information required to find the actual Test Case.
-Do not use spaces in the filename.  
-Instead, replace spaces with underlines (`_`).  
+Do not use spaces in the filename.
+Instead, replace spaces with underlines (`_`).
 
-For example, you can find the [LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction] notebook counterpart in `notebooks/proj_sys_eng/SIT-COM_Integration/LVV-T2229-Closed_Loop.ipynb`.  
+For example, you can find the [LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction] notebook counterpart in `notebooks/proj_sys_eng/SIT-COM_Integration/LVV-T2229-Closed_Loop.ipynb`.
 
-A sub-folder should have at least five notebooks within it to justify its existence.  
-Otherwise, simply add the notebooks in the current folder.  
-This avoid having multiple sub-folders with very few files within them and make it easier to find the files.  
+A sub-folder should have at least five notebooks within it to justify its existence.
+Otherwise, simply add the notebooks in the current folder.
+This avoid having multiple sub-folders with very few files within them and make it easier to find the files.
 
-Data-analysis notebooks should live in the same folder as the data-acquisition notebooks.  
-Data-analysis notebooks should have the following filename `LVV-TXXXX-analysis.ipynb`, where `LVV-TXXXX` is the associated test case.  
+Data-analysis notebooks should live in the same folder as the data-acquisition notebooks.
+Data-analysis notebooks should have the following filename `LVV-TXXXX-analysis.ipynb`, where `LVV-TXXXX` is the associated test case.
 
 [LVV-T2229 (v2.0) Closed Loop ComCam Image Ingestion and Application of Correction]: https://jira.lsstcorp.org/secure/Tests.jspa#/testCase/LVV-T2229
 
@@ -50,7 +50,7 @@ Here is a list of which repos are required to run this notebook:
 * [lsst-sitcom/M2_FEA]
 * [lsst-sitcom/summit_utils]
 
-[lsst-ts/ts_criopy]: https://github.com/lsst-ts/ts_criopy 
+[lsst-ts/ts_criopy]: https://github.com/lsst-ts/ts_criopy
 [lsst-ts/ts_m1m3support]: https://github.com/lsst-ts/ts_m1m3support
 [lsst-ts/ts_config_mttcs]: https://github.com/lsst-ts/ts_config_mttcs
 [lsst-ts/ts_xml]: https://github.com/lsst-ts/ts_xml
@@ -58,10 +58,10 @@ Here is a list of which repos are required to run this notebook:
 [lsst-sitcom/M2_FEA]: https://github.com/lsst-sitcom/M2_FEA
 [lsst-sitcom/summit_utils]: https://github.com/lsst-sitcom/summit_utils
 
-Since every user has a different setup, the paths might be slightly different.  
-It is recommended to have all the repositories cloned under `$HOME/notebooks`.  
-You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later.  
-For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`.  
+Since every user has a different setup, the paths might be slightly different.
+It is recommended to have all the repositories cloned under `$HOME/notebooks`.
+You might end up with many repositories and adding an extra folder with the name of the organization they belong might help to find them on GitHub later.
+For example, this repository would be located in `$HOME/notebooks/lsst-sitcom/notebooks_vandv`.
 The paths below consider this directory structure but, of course, you are free to organize your folders as you please.
 
 In order to have the required repositories available, open a terminal and run the following commands:
@@ -77,9 +77,9 @@ git clone https://github.com/lsst-sitcom/M2_FEA $HOME/notebooks/lsst-sitcom/M2_F
 git clone https://github.com/lsst-sitcom/summit_utils.git $HOME/notebooks/lsst-sitcom/summit_utils
 ```
 
-If you use a different path for these repositories, make sure that you pass this path when running the associated functions.  
-  
-And add these lines to your `$HOME/notebooks/.user_setups` file:  
+If you use a different path for these repositories, make sure that you pass this path when running the associated functions.
+
+And add these lines to your `$HOME/notebooks/.user_setups` file:
 
 ```
 export LSST_DDS_DOMAIN_ID=0
@@ -91,16 +91,16 @@ setup -j M2_FEA -r $HOME/notebooks/lsst-sitcom/M2_FEA
 setup -j summit_utils -r $HOME/notebooks/lsst-sitcom/summit_utils
 ```
 
-You might want to work using a special branch for one or more repositories.  
-In that case, go to the repository root folder and checkout the branch you want to use.  
-For example:  
+You might want to work using a special branch for one or more repositories.
+In that case, go to the repository root folder and checkout the branch you want to use.
+For example:
 
 ```
 cd $HOME/notebooks/lsst-sitcom/summit_utils
 git checkout ${work_branch_name}
 ```
 
-Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations.  
+Finally, you will need to put M1M3 and M2 to use the mount for the look-up table calculations.
 For M2, you can check the [M2 Summit Manual] page in Confluence.
 
 [M2 Summit Manual]: https://confluence.lsstcorp.org/display/LTS/Use+of+M2+EUI+on+Summit
@@ -116,29 +116,54 @@ If a user wishes to develop their own support methods, this repo must be setup p
 One way to setup this repo is to add the following to the `~/notebooks/.user_setups` file:
 
     setup -j notebooks_vandv -r ~/notebooks/lsst-sitcom/notebooks_vandv
-    
+
 You can replace `~/notebooks/lsst-sitcom/notebooks_vandv` with the directory where this file is located.
 
 
 ## Developer Guide
 
-We will try to adopt most of the practices/workflow adopted by the Telecope and Site and Data-Management teams.  
-Here are the links for both of them:  
-  
-- https://tssw-developer.lsst.io/  
-- https://developer.lsst.io/  
+We will try to adopt most of the practices/workflow adopted by the Telecope and Site and Data-Management teams.
+Here are the links for both of them:
 
-Here are a few quick points to keep an eye on:  
-  
-1. We want to follow [TS Development Workflow] (JIRA Ticket, new branch `ticket/PROJ-????`, Pull Request).  
-2. When writing documentation or text in notebooks, try to use [Semantic Like Breaks] for clarity.  
-3. For code standards, let's use the [PEP-8] as a reference.  
-4. When writing new plots/tools, consider the [Rule of Three] to avoid duplication/repetition.  
+- https://tssw-developer.lsst.io/
+- https://developer.lsst.io/
 
-[TS Development Workflow]: https://tssw-developer.lsst.io/procedures/development_workflow.html#development-workflow
+Here are a few quick points to keep an eye on:
+
+1. We want to follow [TS Development Workflow] (JIRA Ticket, new branch `ticket/PROJ-????`, Pull Request).
+2. When writing documentation or text in notebooks, try to use [Semantic Like Breaks] for clarity.
+3. For code standards, let's use the [PEP-8] as a reference.
+4. When writing new plots/tools, consider the [Rule of Three] to avoid duplication/repetition.
+5. When writing commit messages, consider these [Best Commit Practices].
+
+### Best Practices for Writing Commit Messages
+
+When writing commit messages, adhere to the following best practices to ensure our commit history remains clean, informative, and useful for all team members. These guidelines are crucial for both creating and reviewing commits:
+
+1. **Be Clear and Concise:** Aim for short and descriptive messages that accurately reflect the changes made. Avoid vague language that could be unclear to others (or to yourself when revisiting the commit in the future).
+
+2. **Include Relevant Context:** When applicable, provide context that may help others understand the reason behind the changes.
+
+3. **Squash Related Commits:** For related changes, squash commits using `git rebase -i` or a Git GUI tool like GitKraken. Consult the [GitKraken Documentation] for guidance on squashing commits or check this video on [How to squash commits in GitKraken].
+
+4. **Amend Commit Messages if Needed:** If a message lacks clarity or misses crucial information, amend it using `git commit --amend` or using git Kraken ([Amending commit messages with GitKraken]).
+
+5. **Use Imperative Verbs:** Start your commit messages with imperative verbs like "Add", "Fix", "Change", "Remove", etc. This aligns with the convention set by Git itself.
+
+6. **Test and Proofread Before Committing:** Ensure your changes work as intended before commiting and pushing them.
+
+7. **Reviewers' Responsibility:** Reviewers should not only focus on the code changes but also ensure that commit messages are clear, informative, and adhere to these guidelines.
+
+
+[TS Development Workflow]: https://tssw-developer.lsst.io/work_management/development_workflow.html#development-workflow
 [Semantic Like Breaks]: https://sembr.org/
 [PEP-8]: https://peps.python.org/pep-0008/
 [Rule of Three]: https://en.wikipedia.org/wiki/Rule_of_three_(computer_programming)
+[Best Commit Practices]: https://www.linkedin.com/pulse/7-best-practices-writing-good-git-commitmessages-kirinyet-brian
+[GitKraken Documentation]: https://help.gitkraken.com/gitkraken-client/squash/
+[How to squash commits in GitKraken]: (https://drive.google.com/file/d/1ZXnRRny0DCEeE8fwUaaVvcUpa5iQ1wIo/view?usp=sharing)
+[Amending commit messages with GitKraken]:https://www.gitkraken.com/learn/git/problems/git-commit-amend#:~:text=Editing%20the%20message%20of%20your,message%20to%20save%20your%20changes.
+
 
 (more to come)
 
