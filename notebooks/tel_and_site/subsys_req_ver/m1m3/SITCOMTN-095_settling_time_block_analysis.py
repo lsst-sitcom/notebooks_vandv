@@ -191,7 +191,7 @@ def computeSettleTime(
     stabilityCheck = (
         PFCheck.rolling(rollingCheck).apply(lambda s: s.all()) > 0
     )  # true if rollingCheck consecutive true values of PFcheck
-    if len(stabilityCheck[stabilityCheck == True]) < rollingCheck:  ## == 0:
+    if len(stabilityCheck[stabilityCheck == True]) <= rollingCheck:  ## == 0:
         # print(f"Not settled within {postPadding} s window")
         settleTime = False
     elif rms[stabilityCheck[stabilityCheck == True].index[0]] <= rmsReq:
@@ -311,6 +311,7 @@ def runTestSettlingTime(dayObs, postPadding, block, outdir, f, verbose):
     ignoreList = [92, 120, 274] #these are specific seqNums to ignore 
    
     for i in range(len(blockEvents)):
+        #print(TMAState.TRACKING, TMAState.SLEWING, blockEvents[i].endReason, blockEvents[i].type)
         if (blockEvents[i].endReason == TMAState.TRACKING and blockEvents[i].type == TMAState.SLEWING):
             single_slew = blockEvents[i].seqNum  
             if single_slew in ignoreList:
@@ -464,8 +465,8 @@ def main():
     '''
     usage = "%prog [options]"
     parser = OptionParser(usage=usage)
-    parser.add_option("--dayObs",dest="dayObs",help="Date for observations or measurements",default=20231220)
-    parser.add_option("--block",dest="block",help="Set block value",default=146)
+    parser.add_option("--dayObs",dest="dayObs",help="Date for observations or measurements",default=20231222, type= "int")
+    parser.add_option("--block",dest="block",help="Set block value",default=146, type="int")
     parser.add_option("--padding",dest="postPadding",help="Seconds to analyze after slew stop",default=15)
     parser.add_option("--outdir",dest="outdir",help="Output directory for results",default='./SITCOM-1172_out')
     (options, args) = parser.parse_args()
