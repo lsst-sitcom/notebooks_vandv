@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 
 
 def check_requirement(
-    reference_time, df_ims, ims_column, corrected_variable, req, f, verbose=False
+    reference_time, df_ims, ims_column, corrected_variable, req, log_file, verbose=False
 ):
     """Function to check requirement for RMS and bias 1 s after slew stop
 
@@ -46,7 +46,7 @@ def check_requirement(
         tolerance for IMS value to be within requirement. We will apply it 
         to the RMS and bias of the value, with respect to the value at 
         reference_t + post_delta_t
-    f: str
+    log_file: str
         file name for logs
     verbose: bool
         flag for verbosity in outputs
@@ -66,7 +66,7 @@ def check_requirement(
         computed as latest time in which the IMS value has gone above the 
         requirement in RMS or mean
     """
-    ## recomputing RMS for the whole range since T0
+    ## recomputing RMS for the whole range since slew_stop_t
     rolling = 20
     time_array = df_ims.index
     slew_stop = Time(reference_time).unix
@@ -77,19 +77,19 @@ def check_requirement(
         np.abs((Time(time_array).unix) - (Time(time_array).unix[index_slew_stop] + 1))
     )  # which index in time_array is closest to slew_stop + 1 second
     target_variable = df_ims[ims_column][index_slew_stop:-1]
-    # rms = (target_variable - target_variable_reference[1]).rolling(rolling).std()
     rms = (corrected_variable).rolling(rolling).std()
     mean = abs((corrected_variable).rolling(rolling).mean())
     rms_at_req = rms[index_slew_stop_delayed - index_slew_stop]
     mean_at_req = mean[index_slew_stop_delayed - index_slew_stop]
     krms = [index for index, x in enumerate(rms) if np.abs(x) >= req]
     kmean = [index for index, x in enumerate(mean) if np.abs(x) >= req]
+
     if (all(x < req for x in rms[index_slew_stop_delayed - index_slew_stop : -1])) and (
         all(x < req for x in mean[index_slew_stop_delayed - index_slew_stop : -1])
     ):
         # all values of RMS and mean are OK since 1 s after slew stop
         if verbose:
-            log_message(f"{ims_column} Test PASSED", f)
+            log_message(f"{ims_column} Test PASSED", log_file)
 
         if (krms == []) and (
             kmean == []
@@ -110,11 +110,11 @@ def check_requirement(
     else:
         if rms_at_req > req:
             if verbose:
-                log_message(f"{ims_column} Test FAILED in RMS by {rms_at_req-req}", f)
+                log_message(f"{ims_column} Test FAILED in RMS by {rms_at_req-req}", log_file)
 
         if mean_at_req > req:
             if verbose:
-                log_message(f"{ims_column} Test FAILED in mean by {mean_at_req-req}", f)
+                log_message(f"{ims_column} Test FAILED in mean by {mean_at_req-req}", log_file)
 
         if krms == []:
             settle_time = time_array[index_slew_stop + kmean[-1]] - time_array[index_slew_stop]
@@ -127,7 +127,7 @@ def check_requirement(
             )
         settle_time = settle_time.total_seconds()
         PF = False
-    log_message(f"settle_time:{settle_time}", f)
+    log_message(f"settle_time:{settle_time}", log_file)
     return PF, rms_at_req, mean_at_req, settle_time
 
 
@@ -139,7 +139,7 @@ def compute_settle_time(
     ims_column="xPosition",  
     rms_req=2e-3, 
     chi2_prob=0.999,  
-    f="SITCOM_1172.log",
+    log_file="SITCOM_1172.log",
     verbose=False,
 ):
     """Function to compute settle time and PASS/FAIL for a given slew stop event
@@ -163,7 +163,7 @@ def compute_settle_time(
     chi2_prob: float
         confidence level for IMS variable wrt to long term value and variance 
         to agree
-    f: str
+    log_file: str
         file name for logs
     verbose: bool
         Verbosity flag of log outputs
@@ -196,24 +196,24 @@ def compute_settle_time(
 
     settle_time = False
 
-    T0 = pd.to_datetime(reference_time)  # this is slew stop
+    slew_stop_t = pd.to_datetime(reference_time)  # this is slew stop
     delta_window = [
         pd.Timedelta(lo_delta_t, "seconds"),
         pd.Timedelta(hi_delta_t, "seconds"),
     ]
-    # zoom around the T0 of interest
-    TZoom = [T0 - delta_window[0], T0 + delta_window[1]]
+    # zoom around the slew_stop_t of interest
+    zoom_t = [slew_stop_t - delta_window[0], slew_stop_t + delta_window[1]]
 
     # target_variable_plot takes the data frame for the complete plot range
-    target_variable_plot = df_ims[ims_column][TZoom[0] : TZoom[1]]
+    target_variable_plot = df_ims[ims_column][zoom_t[0] : zoom_t[1]]
     # target_variable_check takes the data from the slew stop, until the end of the plot
-    target_variable_check = df_ims[ims_column][T0 : TZoom[1]]
+    target_variable_check = df_ims[ims_column][slew_stop_t : zoom_t[1]]
     idx_t0 = df_ims.index[  # index in dataframe closest in time to slew stop
-        df_ims.index.get_indexer([pd.to_datetime(T0)], method="nearest")
+        df_ims.index.get_indexer([pd.to_datetime(slew_stop_t)], method="nearest")
     ]
     idx_tend = df_ims.index[  # index in dataframe closest in time to end of plot
         df_ims.index.get_indexer(
-            [pd.to_datetime(T0 + delta_window[1])], method="nearest"
+            [pd.to_datetime(slew_stop_t + delta_window[1])], method="nearest"
         )
     ]
     target_variable_reference = [
@@ -247,15 +247,17 @@ def compute_settle_time(
     # so chi2 = sum_N[(x_i - 0)**2/variance] where N = rolling
     sum2 = corrected_variable_check2.rolling(rolling).sum()
     chi2 = sum2 / var
+
     # check the chi2 at each step using rolling_check as the number of consecutive instances in which
     # chi2 has to be under the critical value
     # or rms and bias be both already 10% of requirement
     PFCheck = (chi2 < crit) | ((rms < 0.1 * rms_req) & (mean < 0.1 * rms_req))
-    # PFCheck = (rms < 0.2 * rms_req) & (mean < 0.5 * rms_req)
+ 
     rolling_check = 30
     stability_check = (
         PFCheck.rolling(rolling_check).apply(lambda s: s.all()) > 0
     )  # true if rolling_check consecutive true values of PFcheck
+
     if len(stability_check[stability_check == True]) <= rolling_check:  ## == 0:
         # print(f"Not settled within {postPadding} s window")
         settle_time = False
@@ -268,8 +270,7 @@ def compute_settle_time(
         ):
             settle_time = stability_check[stability_check == True].index[n + rolling_check]
             n = n + 1
-        # if settle_time < reference_time:
-        #    settle_time = reference_time
+        
     settle_interval = -1
     if settle_time:
         settle_interval = settle_time - reference_time
@@ -280,7 +281,7 @@ def compute_settle_time(
             settle_interval = settle_interval.total_seconds()
 
     PF, rms_at_req, mean_at_req, settle_intervalReq = check_requirement(
-        reference_time, df_ims, ims_column, corrected_variable_check, rms_req, f, verbose
+        reference_time, df_ims, ims_column, corrected_variable_check, rms_req, log_file, verbose
     )
 
     # if not settle_time:
@@ -289,25 +290,67 @@ def compute_settle_time(
     return PF, settle_intervalReq, rms_at_req, mean_at_req
 
 
-def log_message(mess, f):
+def log_message(mess, log_file):
+    """Function to write a message in a log file
+
+    Parameters:
+    -----------
+    mess: str
+        message to be written
+    log_file: str
+        path to the log file
+    """
     print(mess)
     try:
-        print(mess, file=f)
+        print(mess, file=log_file)
     except:
         print("Could not write to log file")
     return
 
 
 def get_slew_times(events, i_slew):
-    t0 = Time(events[i_slew].begin, format="isot", scale="utc")
-    t0 = pd.to_datetime(t0.value, utc=True)  # astropy Time to Timestamp conversion
-    t1 = Time(events[i_slew].end, format="isot", scale="utc")
-    t1 = pd.to_datetime(t1.value, utc=True)  # astropy Time to Timestamp conversion
+    """Function to return the beginning and the end time of a slew
+    
+    Parameters:
+    -----------
+    events: 
+        list of slews
+    i_slew: int
+        index of the slew for which the beginning and end time will be determined
 
-    return (t0, t1)
+    Returns:
+    --------
+    t_start: 
+        timestamp corresponding to the beginning of the slew
+    t_end:
+        timestamp corresponding to the end of the slew
+    """
+    t_start = Time(events[i_slew].begin, format="isot", scale="utc")
+    t_start= pd.to_datetime(t_start.value, utc=True)  # astropy Time to Timestamp conversion
+    t_end = Time(events[i_slew].end, format="isot", scale="utc")
+    t_end = pd.to_datetime(t_end.value, utc=True)  # astropy Time to Timestamp conversion
+
+    return (t_start, t_end)
 
 
 def get_IMS_data(events, i_slew, postPadding):
+    """ Function to return the IMS dataframe corresponding to a slew duration 
+    plus an extra time
+
+    Parameters:
+    -----------
+    events: 
+        list of slews
+    i_slew: int
+        index of the slew for which the beginning and end time will be determined
+    postPadding: int
+        extra time to be added after the end of the slew to get IMS data
+
+    Returns:
+    --------
+    df_ims: pandas dataframe
+        dataframe containing the IMS data
+    """
     client = makeEfdClient()
     df_ims = getEfdData(
         client, "lsst.sal.MTM1M3.imsData", event=events[i_slew], postPadding=postPadding
@@ -315,7 +358,7 @@ def get_IMS_data(events, i_slew, postPadding):
     return df_ims
 
 
-def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
+def run_test_settling_time(dayObs, postPadding, block, outdir, log_file, verbose):
     """Function to run the settling time statistics test over a complete 
     block on a given night
 
@@ -329,7 +372,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
         observation block number
     outdir: str
         directory to store plots and log outputs
-    f: str
+    log_file: str
         file handle for log output
     verbose: bool
         flag for output verbosity
@@ -360,7 +403,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     slews = [e for e in events if e.type == TMAState.SLEWING]
     tracks = [e for e in events if e.type == TMAState.TRACKING]
     mess = f"Found {len(slews)} slews and {len(tracks)} tracks"
-    log_message(mess, f)
+    log_message(mess, log_file)
 
     block_parser = BlockParser(dayObs)
     print(f"Found blocks for {dayObs}: {block_parser.getBlockNums()}")
@@ -377,7 +420,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
             block_events.append(event)
 
     log_message(
-        f"Of the {len(events)} events, {len(block_events)} relate to block {block}", f
+        f"Of the {len(events)} events, {len(block_events)} relate to block {block}", log_file
     )
 
     rms_pos_at_req_agg = []
@@ -401,15 +444,16 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
 
     for i in range(len(block_events)):
         # print(TMAState.TRACKING, TMAState.SLEWING, block_events[i].endReason, block_events[i].type)
+
         if (
             block_events[i].endReason == TMAState.TRACKING
             and block_events[i].type == TMAState.SLEWING
         ):
             single_slew = block_events[i].seqNum
             if single_slew in ignoreList:
-                log_message(f"Skipping {single_slew}", f)
+                log_message(f"Skipping {single_slew}", log_file)
                 continue  # e.g. 92 is badly identified in 20231220
-            log_message(f"Will look at slew {single_slew}", f)
+            log_message(f"Will look at slew {single_slew}", log_file)
             t0, t1 = get_slew_times(events, single_slew)
             df_ims = get_IMS_data(events, single_slew, postPadding)
             df_ims = df_ims[all_columns]
@@ -417,11 +461,13 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
             df_ims[pos_columns] = df_ims[pos_columns] * 1e3
             all_col_PF = True  # flag to detect whether any column has failed the test
             fails = 0
+
             for col in all_columns:
                 if col in pos_columns:
                     req = req_rms_position
                 else:
                     req = req_rms_rotation
+
                 PF, settle_interval, rms_at_req, mean_at_req = compute_settle_time(
                     df_ims=df_ims,
                     reference_time=t1,
@@ -430,16 +476,19 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
                     ims_column=col,
                     rms_req=req,
                     chi2_prob=0.99,
-                    f=f,
+                    log_file=log_file,
                     verbose=verbose,
                 )
+
                 if settle_interval >= 0:
-                    log_message(f"{col} settled in {settle_interval:.2f} s", f)
+                    log_message(f"{col} settled in {settle_interval:.2f} s", log_file)
                 else:
-                    log_message(f"{col} not settled in {postPadding} s", f)
+                    log_message(f"{col} not settled in {postPadding} s", log_file)
+
                 if PF == False:
                     all_col_PF = False
                     fails = fails + 1
+
                 if col in pos_columns:
                     rms_pos_at_req_agg.append(rms_at_req)
                     mean_pos_at_req_agg.append(mean_at_req)
@@ -463,8 +512,9 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
                         settle_time_yrot_agg.append(settle_interval)
                     if col == "zRotation":
                         settle_time_zrot_agg.append(settle_interval)
+
             if all_col_PF == False:
-                log_message(f"Event {single_slew} has {fails} failure(s)", f)
+                log_message(f"Event {single_slew} has {fails} failure(s)", log_file)
             fails_agg.append(fails)
 
     title = f"Settle test for block {block} on {dayObs}"
@@ -650,22 +700,22 @@ def main():
     if not os.path.exists(options.outdir):
         os.makedirs(options.outdir)
 
-    f = open(options.outdir + "/SITCOM_1172.log", "a")
+    log_file = open(options.outdir + "/SITCOM_1172.log", "a")
 
     c = datetime.now()
     timeStamp = c.strftime("%H:%M:%S")
-    log_message(f"Running run_test_settling_time at {timeStamp}", f)
+    log_message(f"Running run_test_settling_time at {timeStamp}", log_file)
 
     result = run_test_settling_time(
         options.dayObs,
         options.postPadding,
         options.block,
         options.outdir,
-        f,
+        log_file,
         verbose=True,
     )
 
-    log_message(f"Test result {result}. Check outputs in {options.outdir}", f)
+    log_message(f"Test result {result}. Check outputs in {options.outdir}", log_file)
 
 
 if __name__ == "__main__":
