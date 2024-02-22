@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 
 
 def check_requirement(
-    referenceTime, df_ims, imsColumn, correctedVariable, req, f, verbose=False
+    reference_time, df_ims, ims_column, corrected_variable, req, f, verbose=False
 ):
     """Function to check requirement for RMS and bias 1 s after slew stop
 
@@ -37,12 +37,15 @@ def check_requirement(
         slew stop time in UTC
     df_ims: pandas data frame
         IMS (Independent Measurement System of the M1M3) data
-    imsColumn: str
+    ims_column: str
         specific IMS column to analyze in this function call
-    correctedVariable:
-        column value corrected for the value at the end of the window, determined before the function call
+    corrected_variable:
+        column value corrected for the value at the end of the window, 
+        determined before the function call
     req: float
-        tolerance for IMS value to be within requirement. We will apply it to the RMS and bias of the value, with respect to the value at reference_t + post_delta_t
+        tolerance for IMS value to be within requirement. We will apply it 
+        to the RMS and bias of the value, with respect to the value at 
+        reference_t + post_delta_t
     f: str
         file name for logs
     verbose: bool
@@ -51,84 +54,91 @@ def check_requirement(
     Returns:
     --------
     PF: bool
-        PASS/FAIL for this column and event, at 1 second after slew stop, checking RMS and bias
-    rmsAtReq: float
-        value of the RMS (jitter) of the column value, using a rolling check, after the slew stop
-    meanAtReq: float
-        value of the bias (in absolute value) of the column value, using a rolling check, after the slew stop
-    settleTime: float
-        computed as latest time in which the IMS value has gone above the requirement in RMS or mean
+        PASS/FAIL for this column and event, at 1 second after slew stop, 
+        checking RMS and bias
+    rms_at_req: float
+        value of the RMS (jitter) of the column value, using a rolling check, 
+        after the slew stop
+    mean_at_req: float
+        value of the bias (in absolute value) of the column value, using a 
+        rolling check, after the slew stop
+    settle_time: float
+        computed as latest time in which the IMS value has gone above the 
+        requirement in RMS or mean
     """
     ## recomputing RMS for the whole range since T0
     rolling = 20
     time_array = df_ims.index
-    slew_stop = Time(referenceTime).unix
-    iT0 = np.argmin(
+    slew_stop = Time(reference_time).unix
+    index_slew_stop = np.argmin(
         np.abs((Time(time_array).unix) - slew_stop)
     )  # which index in time_array is closest to slew_stop
-    iT1 = np.argmin(
-        np.abs((Time(time_array).unix) - (Time(time_array).unix[iT0] + 1))
+    index_slew_stop_delayed = np.argmin(
+        np.abs((Time(time_array).unix) - (Time(time_array).unix[index_slew_stop] + 1))
     )  # which index in time_array is closest to slew_stop + 1 second
-    targetVariable = df_ims[imsColumn][iT0:-1]
-    # rms = (targetVariable - targetVariableReference[1]).rolling(rolling).std()
-    rms = (correctedVariable).rolling(rolling).std()
-    mean = abs((correctedVariable).rolling(rolling).mean())
-    rmsAtReq = rms[iT1 - iT0]
-    meanAtReq = mean[iT1 - iT0]
+    target_variable = df_ims[ims_column][index_slew_stop:-1]
+    # rms = (target_variable - target_variable_reference[1]).rolling(rolling).std()
+    rms = (corrected_variable).rolling(rolling).std()
+    mean = abs((corrected_variable).rolling(rolling).mean())
+    rms_at_req = rms[index_slew_stop_delayed - index_slew_stop]
+    mean_at_req = mean[index_slew_stop_delayed - index_slew_stop]
     krms = [index for index, x in enumerate(rms) if np.abs(x) >= req]
     kmean = [index for index, x in enumerate(mean) if np.abs(x) >= req]
-    if (all(x < req for x in rms[iT1 - iT0 : -1])) and (
-        all(x < req for x in mean[iT1 - iT0 : -1])
+    if (all(x < req for x in rms[index_slew_stop_delayed - index_slew_stop : -1])) and (
+        all(x < req for x in mean[index_slew_stop_delayed - index_slew_stop : -1])
     ):
         # all values of RMS and mean are OK since 1 s after slew stop
         if verbose:
-            log_message(f"{imsColumn} Test PASSED", f)
+            log_message(f"{ims_column} Test PASSED", f)
+
         if (krms == []) and (
             kmean == []
         ):  # both RMS and mean comply with requirement at all values
-            settleTime = 0  # already settled at slew stop
+            settle_time = 0  # already settled at slew stop
         else:
             if krms == []:  # only RMS values comply with requirement since slew stop
-                settleTime = time_array[iT0 + kmean[-1]] - time_array[iT0]
+                settle_time = time_array[index_slew_stop + kmean[-1]] - time_array[index_slew_stop]
             elif kmean == []:  # only mean values comply with requirement
-                settleTime = time_array[iT0 + krms[-1]] - time_array[iT0]
+                settle_time = time_array[index_slew_stop + krms[-1]] - time_array[index_slew_stop]
             else:  # neither comply with requirement for all times since slew stop, take maximum
-                settleTime = (
-                    max(time_array[iT0 + krms[-1]], time_array[iT0 + kmean[-1]])
-                    - time_array[iT0]
+                settle_time = (
+                    max(time_array[index_slew_stop + krms[-1]], time_array[index_slew_stop + kmean[-1]])
+                    - time_array[index_slew_stop]
                 )
-            settleTime = settleTime.total_seconds()
+            settle_time = settle_time.total_seconds()
         PF = True
     else:
-        if rmsAtReq > req:
+        if rms_at_req > req:
             if verbose:
-                log_message(f"{imsColumn} Test FAILED in RMS by {rmsAtReq-req}", f)
-        if meanAtReq > req:
+                log_message(f"{ims_column} Test FAILED in RMS by {rms_at_req-req}", f)
+
+        if mean_at_req > req:
             if verbose:
-                log_message(f"{imsColumn} Test FAILED in mean by {meanAtReq-req}", f)
+                log_message(f"{ims_column} Test FAILED in mean by {mean_at_req-req}", f)
+
         if krms == []:
-            settleTime = time_array[iT0 + kmean[-1]] - time_array[iT0]
+            settle_time = time_array[index_slew_stop + kmean[-1]] - time_array[index_slew_stop]
         elif kmean == []:
-            settleTime = time_array[iT0 + krms[-1]] - time_array[iT0]
+            settle_time = time_array[index_slew_stop + krms[-1]] - time_array[index_slew_stop]
         else:
-            settleTime = (
-                max(time_array[iT0 + krms[-1]], time_array[iT0 + kmean[-1]])
-                - time_array[iT0]
+            settle_time = (
+                max(time_array[index_slew_stop + krms[-1]], time_array[index_slew_stop + kmean[-1]])
+                - time_array[index_slew_stop]
             )
-        settleTime = settleTime.total_seconds()
+        settle_time = settle_time.total_seconds()
         PF = False
-    log_message(f"settleTime:{settleTime}", f)
-    return PF, rmsAtReq, meanAtReq, settleTime
+    log_message(f"settle_time:{settle_time}", f)
+    return PF, rms_at_req, mean_at_req, settle_time
 
 
 def compute_settle_time(
-    df_ims,  # input data frame
-    referenceTime="2023-06-01T06:00:0Z",  # time for slew stop (T0)
-    lo_delta_t=5,  # in seconds
-    hi_delta_t=30,  # in seconds
-    imsColumn="xPosition",  # IMS column
-    rmsReq=2e-3,  # requirement in appropriate units
-    chi2prob=0.999,  # confidence level for IMS variable wrt to long term value and variance to agree
+    df_ims,  
+    reference_time="2023-06-01T06:00:0Z",  
+    lo_delta_t=5,  
+    hi_delta_t=30,  
+    ims_column="xPosition",  
+    rms_req=2e-3, 
+    chi2_prob=0.999,  
     f="SITCOM_1172.log",
     verbose=False,
 ):
@@ -144,12 +154,15 @@ def compute_settle_time(
         time window in seconds BEFORE the slew stop to retrieve data
     hi_delta_t: int
         time window in seconds AFTER the slew stop to retrieve data
-    imsColumn: str
+    ims_column: str
         specific IMS column to analyze in this function call
-    rmsReq: float
-        tolerance for IMS value to be within requirement. We will apply it to the RMS and bias of the value, with respect to the value at reference_t + post_delta_t
-    chi2prob: float
-        confidence level for IMS variable wrt to long term value and variance to agree
+    rms_req: float
+        tolerance for IMS value to be within requirement. We will apply it 
+        to the RMS and bias of the value, with respect to the value at 
+        reference_t + post_delta_t
+    chi2_prob: float
+        confidence level for IMS variable wrt to long term value and variance 
+        to agree
     f: str
         file name for logs
     verbose: bool
@@ -158,28 +171,32 @@ def compute_settle_time(
     Returns:
     --------
     PF: bool
-        PASS/FAIL for this column and event, at 1 second after slew stop, checking RMS and bias
-    settleInterval: float
-        the time after slew stop where the algorithm determines there is stability, independently of requirement
-    rmsAtReq: float
-        value of the RMS (jitter) of the column value, using a rolling check, after the slew stop
-    meanAtReq: float
-        value of the bias (in absolute value) of the column value, using a rolling check, after the slew stop
+        PASS/FAIL for this column and event, at 1 second after slew stop, 
+        checking RMS and bias
+    settle_interval: float
+        the time after slew stop where the algorithm determines there is 
+        stability, independently of requirement
+    rms_at_req: float
+        value of the RMS (jitter) of the column value, using a rolling check, 
+        after the slew stop
+    mean_at_req: float
+        value of the bias (in absolute value) of the column value, using a 
+        rolling check, after the slew stop
     """
 
-    if "Position" in imsColumn:
+    if "Position" in ims_column:
         units = "mm"
-        ylimMax = rmsReq + 0.005
-    elif "Rotation" in imsColumn:
+        ylimMax = rms_req + 0.005
+    elif "Rotation" in ims_column:
         units = "deg"
-        ylimMax = rmsReq + 0.0001
+        ylimMax = rms_req + 0.0001
     else:
         print("Unidentified column")
         return -1
 
-    settleTime = False
+    settle_time = False
 
-    T0 = pd.to_datetime(referenceTime)  # this is slew stop
+    T0 = pd.to_datetime(reference_time)  # this is slew stop
     delta_window = [
         pd.Timedelta(lo_delta_t, "seconds"),
         pd.Timedelta(hi_delta_t, "seconds"),
@@ -187,89 +204,89 @@ def compute_settle_time(
     # zoom around the T0 of interest
     TZoom = [T0 - delta_window[0], T0 + delta_window[1]]
 
-    # targetVariablePlot takes the data frame for the complete plot range
-    targetVariablePlot = df_ims[imsColumn][TZoom[0] : TZoom[1]]
-    # targetVariableCheck takes the data from the slew stop, until the end of the plot
-    targetVariableCheck = df_ims[imsColumn][T0 : TZoom[1]]
-    idxT0 = df_ims.index[  # index in dataframe closest in time to slew stop
+    # target_variable_plot takes the data frame for the complete plot range
+    target_variable_plot = df_ims[ims_column][TZoom[0] : TZoom[1]]
+    # target_variable_check takes the data from the slew stop, until the end of the plot
+    target_variable_check = df_ims[ims_column][T0 : TZoom[1]]
+    idx_t0 = df_ims.index[  # index in dataframe closest in time to slew stop
         df_ims.index.get_indexer([pd.to_datetime(T0)], method="nearest")
     ]
-    idxTend = df_ims.index[  # index in dataframe closest in time to end of plot
+    idx_tend = df_ims.index[  # index in dataframe closest in time to end of plot
         df_ims.index.get_indexer(
             [pd.to_datetime(T0 + delta_window[1])], method="nearest"
         )
     ]
-    targetVariableReference = [
-        float(df_ims[imsColumn][idxT0]),
-        float(df_ims[imsColumn][idxTend]),
+    target_variable_reference = [
+        float(df_ims[ims_column][idx_t0]),
+        float(df_ims[ims_column][idx_tend]),
     ]
-    if len(targetVariablePlot.index) == 0:
+    if len(target_variable_plot.index) == 0:
         print("Data frame is empty")
         return -1
 
-    # it is important that the end of the plot (targetVariableReference[1])
+    # it is important that the end of the plot (target_variable_reference[1])
     # does not hit another slew or movement, nor at any point in the middle of the window
 
     # correct IMS variable wrt end of plot
-    correctedVariablePlot = targetVariablePlot - targetVariableReference[1]
-    correctedVariableCheck = targetVariableCheck - targetVariableReference[1]
-    correctedVariableCheck2 = np.square(correctedVariableCheck)
+    corrected_variablePlot = target_variable_plot - target_variable_reference[1]
+    corrected_variable_check = target_variable_check - target_variable_reference[1]
+    corrected_variable_check2 = np.square(corrected_variable_check)
 
     # number of values where the chi2 will be computed
     rolling = 30  # 50 is approx. 1 s
-    # chi2 right tail probability for N=rolling dof at chi2prob CL
-    crit = stats.chi2.ppf(chi2prob, rolling)
+    # chi2 right tail probability for N=rolling dof at chi2_prob CL
+    crit = stats.chi2.ppf(chi2_prob, rolling)
 
-    rms = correctedVariableCheck.rolling(rolling).std()
-    var = correctedVariableCheck.rolling(rolling).var()
-    mean = abs(correctedVariableCheck.rolling(rolling).mean())
+    rms = corrected_variable_check.rolling(rolling).std()
+    var = corrected_variable_check.rolling(rolling).var()
+    mean = abs(corrected_variable_check.rolling(rolling).mean())
 
     # compute the chi2 against the null hypothesis
     # the x_i are the measurements in a window (wrt to reference at end of plot)
     # the variance is for the same values
     # so chi2 = sum_N[(x_i - 0)**2/variance] where N = rolling
-    sum2 = correctedVariableCheck2.rolling(rolling).sum()
+    sum2 = corrected_variable_check2.rolling(rolling).sum()
     chi2 = sum2 / var
-    # check the chi2 at each step using rollingCheck as the number of consecutive instances in which
+    # check the chi2 at each step using rolling_check as the number of consecutive instances in which
     # chi2 has to be under the critical value
     # or rms and bias be both already 10% of requirement
-    PFCheck = (chi2 < crit) | ((rms < 0.1 * rmsReq) & (mean < 0.1 * rmsReq))
-    # PFCheck = (rms < 0.2 * rmsReq) & (mean < 0.5 * rmsReq)
-    rollingCheck = 30
-    stabilityCheck = (
-        PFCheck.rolling(rollingCheck).apply(lambda s: s.all()) > 0
-    )  # true if rollingCheck consecutive true values of PFcheck
-    if len(stabilityCheck[stabilityCheck == True]) <= rollingCheck:  ## == 0:
+    PFCheck = (chi2 < crit) | ((rms < 0.1 * rms_req) & (mean < 0.1 * rms_req))
+    # PFCheck = (rms < 0.2 * rms_req) & (mean < 0.5 * rms_req)
+    rolling_check = 30
+    stability_check = (
+        PFCheck.rolling(rolling_check).apply(lambda s: s.all()) > 0
+    )  # true if rolling_check consecutive true values of PFcheck
+    if len(stability_check[stability_check == True]) <= rolling_check:  ## == 0:
         # print(f"Not settled within {postPadding} s window")
-        settleTime = False
-    elif rms[stabilityCheck[stabilityCheck == True].index[0]] <= rmsReq:
-        settleTime = stabilityCheck[stabilityCheck == True].index[rollingCheck]
+        settle_time = False
+    elif rms[stability_check[stability_check == True].index[0]] <= rms_req:
+        settle_time = stability_check[stability_check == True].index[rolling_check]
     else:
         n = 1
         while (
-            rms[stabilityCheck[stabilityCheck == True].index[n + rollingCheck]] > rmsReq
+            rms[stability_check[stability_check == True].index[n + rolling_check]] > rms_req
         ):
-            settleTime = stabilityCheck[stabilityCheck == True].index[n + rollingCheck]
+            settle_time = stability_check[stability_check == True].index[n + rolling_check]
             n = n + 1
-        # if settleTime < referenceTime:
-        #    settleTime = referenceTime
-    settleInterval = -1
-    if settleTime:
-        settleInterval = settleTime - referenceTime
-        if settleInterval.total_seconds() < 0:
+        # if settle_time < reference_time:
+        #    settle_time = reference_time
+    settle_interval = -1
+    if settle_time:
+        settle_interval = settle_time - reference_time
+        if settle_interval.total_seconds() < 0:
             print(f"Already settled at slew stop")
-            settleInterval = 0
+            settle_interval = 0
         else:
-            settleInterval = settleInterval.total_seconds()
+            settle_interval = settle_interval.total_seconds()
 
-    PF, rmsAtReq, meanAtReq, settleIntervalReq = check_requirement(
-        referenceTime, df_ims, imsColumn, correctedVariableCheck, rmsReq, f, verbose
+    PF, rms_at_req, mean_at_req, settle_intervalReq = check_requirement(
+        reference_time, df_ims, ims_column, corrected_variable_check, rms_req, f, verbose
     )
 
-    # if not settleTime:
-    #    return True,-1,rmsAtReq,meanAtReq
+    # if not settle_time:
+    #    return True,-1,rms_at_req,mean_at_req
 
-    return PF, settleIntervalReq, rmsAtReq, meanAtReq
+    return PF, settle_intervalReq, rms_at_req, mean_at_req
 
 
 def log_message(mess, f):
@@ -299,7 +316,8 @@ def get_IMS_data(events, i_slew, postPadding):
 
 
 def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
-    """Function to run the settling time statistics test over a complete block on a given night
+    """Function to run the settling time statistics test over a complete 
+    block on a given night
 
     Parameters:
     -----------
@@ -320,7 +338,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     req_rms_position = (
         2e-3  ## mm, tolerance from repeatability requirement for IMS positional
     )
-    req_rms_rotation = 3e-5  ## degrees (1arcsec is 27e-5), tolerance from repeatability requirement for IMS rotational
+    req_rms_rotation = 3e-5  ## degrees (1 arcsec is 27e-5), tolerance from repeatability requirement for IMS rotational
 
     # Select data from a given date
     eventMaker = TMAEventMaker()
@@ -344,50 +362,50 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     mess = f"Found {len(slews)} slews and {len(tracks)} tracks"
     log_message(mess, f)
 
-    blockParser = BlockParser(dayObs)
-    print(f"Found blocks for {dayObs}: {blockParser.getBlockNums()}")
-    blockNums = blockParser.getBlockNums()
+    block_parser = BlockParser(dayObs)
+    print(f"Found blocks for {dayObs}: {block_parser.getBlockNums()}")
+    blockNums = block_parser.getBlockNums()
 
-    blockEvents = []
+    block_events = []
     for event in events:
         blockInfos = event.blockInfos
         if blockInfos is None:
             continue  # no block info attached to event at all
-        # check if any of the attached blockInfos are for blockEvents
+        # check if any of the attached blockInfos are for block_events
         blockNums = {b.blockNumber for b in blockInfos}
         if block in blockNums:
-            blockEvents.append(event)
+            block_events.append(event)
 
     log_message(
-        f"Of the {len(events)} events, {len(blockEvents)} relate to block {block}", f
+        f"Of the {len(events)} events, {len(block_events)} relate to block {block}", f
     )
 
-    rmsPosAtReqAgg = []
-    meanPosAtReqAgg = []
-    meanXPosAtReqAgg = []
-    meanYPosAtReqAgg = []
-    meanZPosAtReqAgg = []
-    rmsRotAtReqAgg = []
-    meanRotAtReqAgg = []
-    settleTimePosAgg = []
-    settleTimeRotAgg = []
-    failsAgg = []
-    settleTimeXPosAgg = []
-    settleTimeYPosAgg = []
-    settleTimeZPosAgg = []
-    settleTimeXRotAgg = []
-    settleTimeYRotAgg = []
-    settleTimeZRotAgg = []
+    rms_pos_at_req_agg = []
+    mean_pos_at_req_agg = []
+    mean_xpos_at_req_agg = []
+    mean_ypos_at_req_agg = []
+    mean_zpos_at_req_agg = []
+    rms_rot_at_req_agg = []
+    mean_rot_at_req_agg = []
+    settle_time_pos_agg = []
+    settle_time_rot_agg = []
+    fails_agg = []
+    settle_time_xpos_agg = []
+    settle_time_ypos_agg = []
+    settle_time_zpos_agg = []
+    settle_time_xrot_agg = []
+    settle_time_yrot_agg = []
+    settle_time_zrot_agg = []
 
     ignoreList = [92, 120, 274]  # these are specific seqNums to ignore
 
-    for i in range(len(blockEvents)):
-        # print(TMAState.TRACKING, TMAState.SLEWING, blockEvents[i].endReason, blockEvents[i].type)
+    for i in range(len(block_events)):
+        # print(TMAState.TRACKING, TMAState.SLEWING, block_events[i].endReason, block_events[i].type)
         if (
-            blockEvents[i].endReason == TMAState.TRACKING
-            and blockEvents[i].type == TMAState.SLEWING
+            block_events[i].endReason == TMAState.TRACKING
+            and block_events[i].type == TMAState.SLEWING
         ):
-            single_slew = blockEvents[i].seqNum
+            single_slew = block_events[i].seqNum
             if single_slew in ignoreList:
                 log_message(f"Skipping {single_slew}", f)
                 continue  # e.g. 92 is badly identified in 20231220
@@ -397,63 +415,60 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
             df_ims = df_ims[all_columns]
             # Convert meter to milimeter
             df_ims[pos_columns] = df_ims[pos_columns] * 1e3
-            allcolPF = True  # flag to detect whether any column has failed the test
+            all_col_PF = True  # flag to detect whether any column has failed the test
             fails = 0
             for col in all_columns:
                 if col in pos_columns:
                     req = req_rms_position
                 else:
                     req = req_rms_rotation
-                PF, settleInterval, rmsAtReq, meanAtReq = compute_settle_time(
+                PF, settle_interval, rms_at_req, mean_at_req = compute_settle_time(
                     df_ims=df_ims,
-                    referenceTime=t1,
+                    reference_time=t1,
                     lo_delta_t=5,
                     hi_delta_t=postPadding,
-                    imsColumn=col,
-                    rmsReq=req,
-                    chi2prob=0.99,
+                    ims_column=col,
+                    rms_req=req,
+                    chi2_prob=0.99,
                     f=f,
                     verbose=verbose,
                 )
-                if settleInterval >= 0:
-                    log_message(f"{col} settled in {settleInterval:.2f} s", f)
+                if settle_interval >= 0:
+                    log_message(f"{col} settled in {settle_interval:.2f} s", f)
                 else:
                     log_message(f"{col} not settled in {postPadding} s", f)
                 if PF == False:
-                    allcolPF = False
+                    all_col_PF = False
                     fails = fails + 1
                 if col in pos_columns:
-                    rmsPosAtReqAgg.append(rmsAtReq)
-                    meanPosAtReqAgg.append(meanAtReq)
-                    settleTimePosAgg.append(settleInterval)
+                    rms_pos_at_req_agg.append(rms_at_req)
+                    mean_pos_at_req_agg.append(mean_at_req)
+                    settle_time_pos_agg.append(settle_interval)
                     if col == "xPosition":
-                        meanXPosAtReqAgg.append(meanAtReq)
-                        settleTimeXPosAgg.append(settleInterval)
+                        mean_xpos_at_req_agg.append(mean_at_req)
+                        settle_time_xpos_agg.append(settle_interval)
                     if col == "yPosition":
-                        meanYPosAtReqAgg.append(meanAtReq)
-                        settleTimeYPosAgg.append(settleInterval)
+                        mean_ypos_at_req_agg.append(mean_at_req)
+                        settle_time_ypos_agg.append(settle_interval)
                     if col == "zPosition":
-                        meanZPosAtReqAgg.append(meanAtReq)
-                        settleTimeZPosAgg.append(settleInterval)
+                        mean_zpos_at_req_agg.append(mean_at_req)
+                        settle_time_zpos_agg.append(settle_interval)
                 else:
-                    rmsRotAtReqAgg.append(rmsAtReq)
-                    meanRotAtReqAgg.append(meanAtReq)
-                    settleTimeRotAgg.append(settleInterval)
+                    rms_rot_at_req_agg.append(rms_at_req)
+                    mean_rot_at_req_agg.append(mean_at_req)
+                    settle_time_rot_agg.append(settle_interval)
                     if col == "xRotation":
-                        settleTimeXRotAgg.append(settleInterval)
+                        settle_time_xrot_agg.append(settle_interval)
                     if col == "yRotation":
-                        settleTimeYRotAgg.append(settleInterval)
+                        settle_time_yrot_agg.append(settle_interval)
                     if col == "zRotation":
-                        settleTimeZRotAgg.append(settleInterval)
-            if allcolPF == False:
+                        settle_time_zrot_agg.append(settle_interval)
+            if all_col_PF == False:
                 log_message(f"Event {single_slew} has {fails} failure(s)", f)
-            failsAgg.append(fails)
-
-        # if i > 2:
-        #    break
+            fails_agg.append(fails)
 
     title = f"Settle test for block {block} on {dayObs}"
-    plt.hist(failsAgg, bins=[0, 1, 2, 3, 4, 5, 6, 7])
+    plt.hist(fails_agg, bins=[0, 1, 2, 3, 4, 5, 6, 7])
     plt.title(title + " Number of failures per event")
     plt.ylabel("Number of events")
     plt.xlabel("Number of failures")
@@ -461,7 +476,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     plt.savefig(outdir + "/nb_failures.png")
 
     plt.clf()
-    plt.hist(settleTimePosAgg, bins=50)
+    plt.hist(settle_time_pos_agg, bins=50)
     plt.title(title + " settle time for position")
     plt.ylabel("Number of events (all axes)")
     plt.xlabel("Settling time (s)")
@@ -470,7 +485,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
 
     plt.clf()
     plt.hist(
-        settleTimeXPosAgg,
+        settle_time_xpos_agg,
         bins=50,
         alpha=0.5,
         color="red",
@@ -478,7 +493,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
         label="xPosition",
     )
     plt.hist(
-        settleTimeYPosAgg,
+        settle_time_ypos_agg,
         bins=50,
         alpha=0.5,
         color="green",
@@ -486,7 +501,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
         label="yPosition",
     )
     plt.hist(
-        settleTimeZPosAgg,
+        settle_time_zpos_agg,
         bins=50,
         alpha=0.5,
         color="black",
@@ -501,7 +516,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
 
     plt.clf()
     plt.hist(
-        settleTimeXRotAgg,
+        settle_time_xrot_agg,
         bins=50,
         alpha=0.5,
         color="red",
@@ -509,7 +524,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
         label="xRotation",
     )
     plt.hist(
-        settleTimeYRotAgg,
+        settle_time_yrot_agg,
         bins=50,
         alpha=0.5,
         color="green",
@@ -517,7 +532,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
         label="yRotation",
     )
     plt.hist(
-        settleTimeZRotAgg,
+        settle_time_zrot_agg,
         bins=50,
         alpha=0.5,
         color="black",
@@ -531,7 +546,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     plt.savefig(outdir + "/settletime_rotation_xyz.png")
 
     plt.clf()
-    plt.hist(settleTimeRotAgg, bins=50)
+    plt.hist(settle_time_rot_agg, bins=50)
     plt.title(title + " settle time for rotation")
     plt.ylabel("Number of events (all axes)")
     plt.xlabel("Settling time (s)")
@@ -539,7 +554,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     plt.savefig(outdir + "/settletime_rotation.png")
 
     plt.clf()
-    plt.hist(rmsPosAtReqAgg, bins=50)
+    plt.hist(rms_pos_at_req_agg, bins=50)
     plt.axvline(req_rms_position, lw="1.25", c="k", ls="dashed", label="Requirement")
     plt.title(title + " position RMS")
     plt.xlabel("IMS position RMS wrt settled, at 1 s after stop (mm)")
@@ -547,7 +562,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     plt.savefig(outdir + "/rms_position.png")
 
     plt.clf()
-    plt.hist(rmsRotAtReqAgg, bins=50)
+    plt.hist(rms_rot_at_req_agg, bins=50)
     plt.axvline(req_rms_rotation, lw="1.25", c="k", ls="dashed", label="Requirement")
     plt.title(title + " rotation RMS")
     plt.xlabel("IMS rotation RMS wrt settled, at 1 s after stop (deg)")
@@ -555,7 +570,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     plt.savefig(outdir + "/rms_rotation.png")
 
     plt.clf()
-    plt.hist(meanPosAtReqAgg, bins=50)
+    plt.hist(mean_pos_at_req_agg, bins=50)
     plt.axvline(req_rms_position, lw="1.25", c="k", ls="dashed", label="Requirement")
     plt.title(title + " position bias")
     plt.xlabel("IMS position BIAS wrt settled, at 1 s after stop (mm)")
@@ -564,7 +579,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
 
     plt.clf()
     plt.hist(
-        meanXPosAtReqAgg,
+        mean_xpos_at_req_agg,
         bins=50,
         alpha=0.5,
         color="red",
@@ -572,7 +587,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
         label="xPosition",
     )
     plt.hist(
-        meanYPosAtReqAgg,
+        mean_ypos_at_req_agg,
         bins=50,
         alpha=0.5,
         color="green",
@@ -580,7 +595,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
         label="yPosition",
     )
     plt.hist(
-        meanZPosAtReqAgg,
+        mean_zpos_at_req_agg,
         bins=50,
         alpha=0.5,
         color="black",
@@ -594,7 +609,7 @@ def run_test_settling_time(dayObs, postPadding, block, outdir, f, verbose):
     plt.savefig(outdir + "/mean_position_xyz.png")
 
     plt.clf()
-    plt.hist(meanRotAtReqAgg, bins=50)
+    plt.hist(mean_rot_at_req_agg, bins=50)
     plt.axvline(req_rms_rotation, lw="1.25", c="k", ls="dashed", label="Requirement")
     plt.title(title + " rotation bias")
     plt.xlabel("IMS rotation BIAS wrt settled, at 1 s after stop (deg)")
