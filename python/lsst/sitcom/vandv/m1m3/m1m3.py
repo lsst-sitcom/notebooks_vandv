@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from lsst.ts.xml.tables.m1m3 import actuator_id_to_index, FATable
+from lsst.ts.xml.tables.m1m3 import actuator_id_to_index, FATable, FAOrientation
+
 
 from lsst.sitcom.vandv.efd import query_last_n
 
@@ -45,7 +46,7 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
         If `None`, it falls back to
         `$HOME/notebooks/lsst-ts/ts_m1m3support/SettingFiles/Tables/`
     as_array : bool
-        Boolean indicating if the lut values should be an array. 
+        Boolean indicating if the lut values should be an array.
         Should be True if passing more than one value for elevation.
 
     Returns
@@ -75,14 +76,14 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
     n = len(lut_el.index)
     elevation_forces = np.zeros((n, len(elevation))) if as_array else np.zeros(n)
     zenith_angle = 90.0 - elevation
-    
+
     for i in range(n):
         coeff = [lut_el["Coefficient %d" % j][i] for j in range(5, -1, -1)]
         mypoly = np.poly1d(coeff)
         elevation_forces[i] = mypoly(zenith_angle)
 
-
     return elevation_forces if as_array else np.array(elevation_forces)
+
 
 def lut_elevation_xforces(elevation, lut_path=None, as_array=False):
     """
@@ -102,7 +103,9 @@ def lut_elevation_xforces(elevation, lut_path=None, as_array=False):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationXTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
+    return lut_elevation_forces(
+        elevation, lut_file, lut_path=lut_path, as_array=as_array
+    )
 
 
 def lut_elevation_yforces(elevation, lut_path=None, as_array=False):
@@ -123,7 +126,9 @@ def lut_elevation_yforces(elevation, lut_path=None, as_array=False):
     array : the xForces calculated from the lut.
     """
     lut_file = "ElevationYTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
+    return lut_elevation_forces(
+        elevation, lut_file, lut_path=lut_path, as_array=as_array
+    )
 
 
 def lut_elevation_zforces(elevation, lut_path=None, as_array=False):
@@ -144,7 +149,9 @@ def lut_elevation_zforces(elevation, lut_path=None, as_array=False):
     array : the zForces calculated from the lut.
     """
     lut_file = "ElevationZTable.csv"
-    return lut_elevation_forces(elevation, lut_file, lut_path=lut_path, as_array=as_array)
+    return lut_elevation_forces(
+        elevation, lut_file, lut_path=lut_path, as_array=as_array
+    )
 
 
 def plot_m1m3_and_elevation(df, prefix=None):
@@ -161,7 +168,9 @@ def plot_m1m3_and_elevation(df, prefix=None):
         M1M3 (lsst.sal.MTM1M3.forceActuatorData.zForce).
     """
     actuators_ids = [129, 229, 329, 429]
-    actuators_ids_idx = [actuator_id_to_index(actuator_id) for actuator_id in actuators_ids]
+    actuators_ids_idx = [
+        actuator_id_to_index(actuator_id) for actuator_id in actuators_ids
+    ]
     colors = ["C0", "C1", "C2", "C3"]
 
     # Prepare figure name
@@ -260,7 +269,6 @@ async def show_last_forces_efd(client, lower_t=None, upper_t=None, execution=Non
 
     fx, fy, fz = {}, {}, {}
     for key, topic in forces.items():
-
         print(f"Query {topic}")
         await asyncio.sleep(1)
 
@@ -425,6 +433,8 @@ def snapshot_forces(ax, series, prefix, labels=None):
     label : list, optional
         List of labels for the series.
     """
+    assert isinstance(series, list), "Expected a list of series"
+
     if labels and (len(series) != len(labels)):
         raise ValueError(
             "Expected the number of elemenets in `series` and `labels`"
@@ -464,10 +474,22 @@ def snapshot_zforces(ax, series, labels=None):
     return ax
 
 
-def snapshot_zforces_overview(
-    ax, series, prefix="zForce", title="", size=100, show_ids=True, show_mirrors=True
+def snapshot_forces_fa_map(
+    ax,
+    series,
+    prefix="zForce",
+    title="",
+    size=100,
+    font_size=None,
+    show_ids=True,
+    show_mirrors=True,
 ):
-    """Show the force intensity on each actuator.
+    """
+    Displays a snaptshop of forces on each of the M1M3 Force Actuators as a
+    2D map. The input forces represented as a Pandas Series. It can represent
+    a single point in time or some sort of summarized time series using
+    any function. The prefix is used to select the axes of the Force Actuators
+    we are interested in.
 
     Parameters
     ----------
@@ -480,7 +502,9 @@ def snapshot_zforces_overview(
     title : str, optional
         Label for the plot.
     size : int, optional
-        Dot size in points.
+        Markers' diameters in points.
+    font_size : float, optional
+        Font size in points.
     show_ids: bool, optional
         Show each actuator ID (default: False)
     show_mirrors: bool, optional
@@ -491,8 +515,23 @@ def snapshot_zforces_overview(
     https://docushare.lsst.org/docushare/dsweb/Get/LSE-11/
     LSE-11_OpticalDesignSummary_rel3.5_20190819.pdf (Figure 15)
     """
-    from lsst.ts.criopy import M1M3FATable
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    # Select actuators based on prefix
+    if "x" in prefix:
+        fa_table = [
+            fa
+            for fa in FATable
+            if fa.orientation in [FAOrientation.X_PLUS, FAOrientation.X_MINUS]
+        ]
+    elif "y" in prefix:
+        fa_table = [
+            fa
+            for fa in FATable
+            if fa.orientation in [FAOrientation.Y_PLUS, FAOrientation.Y_MINUS]
+        ]
+    else:
+        fa_table = FATable
 
     # Show mirror area
     if show_mirrors:
@@ -501,13 +540,13 @@ def snapshot_zforces_overview(
         m3_outer_diameter = 5.016  # meters
         m3_inner_diameter = 1.100  # meters
 
-        m1_mirror = plt.Circle((0, 0), m1_outer_diameter / 2.0, fc="k", alpha=0.2)
+        m1_mirror = plt.Circle((0, 0), m1_outer_diameter / 2.0, fc="k", alpha=0.05)
         ax.add_patch(m1_mirror)
 
         m1_inner = plt.Circle((0, 0), m1_inner_diameter / 2.0, fc="w")
         ax.add_patch(m1_inner)
 
-        m3_mirror = plt.Circle((0, 0), m3_outer_diameter / 2.0, fc="k", alpha=0.2)
+        m3_mirror = plt.Circle((0, 0), m3_outer_diameter / 2.0, fc="k", alpha=0.05)
         ax.add_patch(m3_mirror)
 
         m3_inner = plt.Circle((0, 0), m3_inner_diameter / 2.0, fc="w")
@@ -515,27 +554,28 @@ def snapshot_zforces_overview(
 
     # Show actuators and their values
     cols = [c for c in series.index if prefix in c]
-    idxs = [int(s) for c in cols for s in re.findall(r"\d+", c)]
 
     # Get the position of the actuators
-    ids = [fa.actuator_id for fa in FATable]
-    xact = -np.float64([fa.x_position for fa in FATable])
-    yact = -np.float64([fa.y_position for fa in FATable])
+    ids = [fa.actuator_id for fa in fa_table]
+    xact = -np.float64([fa.x_position for fa in fa_table])
+    yact = -np.float64([fa.y_position for fa in fa_table])
 
     data = series[cols]
-    
+
     # Fill plot with empty actuators
     data[data == 0] = np.nan
-    for x, y in zip(xact[np.isnan(data)], yact[np.isnan(data)]):
-        empty_actuator = plt.Circle((x, y), size/550, fc="k")
-        ax.add_patch(empty_actuator)
-    
+    empty_x = xact[np.isnan(data)]
+    empty_y = yact[np.isnan(data)]
+    ax.scatter(empty_x, empty_y, c="k", s=size, edgecolors="k", alpha=0.25)
+
     if np.all(np.isnan(data)):
         raise ValueError("No valid data in the array")
 
-    im = ax.scatter(xact, yact, c=data, s=size)  
+    # Plot valid data
+    im = ax.scatter(xact, yact, c=data, s=size)
 
     if show_ids:
+        font_size = font_size if font_size else 0.5 * np.sqrt(size)
         for x, y, _id in zip(xact, yact, ids):
             ax.text(
                 x,
@@ -544,7 +584,7 @@ def snapshot_zforces_overview(
                 color="w",
                 ha="center",
                 va="center",
-                fontsize=0.05 * size,
+                fontsize=font_size,
             )
 
         off = m1_outer_diameter * 0.45
