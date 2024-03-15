@@ -6,6 +6,7 @@ from astropy.time import Time, TimeDelta
 from scipy.optimize import minimize
 
 from lsst.summit.utils.efdUtils import getEfdData
+from lsst.summit.utils.tmaUtils import TMAEvent
 from lsst.ts.xml.enums.MTM1M3 import BumpTest
 from lsst.ts.xml.tables.m1m3 import force_actuator_from_id
 
@@ -13,15 +14,16 @@ from lsst.ts.xml.tables.m1m3 import force_actuator_from_id
 BUMP_TEST_DURATION = 14.0  # seconds
 
 
-def plot_bump_test_actuator_delay(
+def plot_actuator_delay(
     fig: plt.Figure,
     client: object,
-    bt_results: pd.DataFrame,
     fa_id: int,
+    event: TMAEvent = None,    
+    bt_results: pd.DataFrame = None,
     bt_index: int = 0,
 ) -> (float, float):
     """
-    Plot the bump test actuator delay.
+    Plot the actuator delay.
 
     Parameters
     ----------
@@ -30,7 +32,11 @@ def plot_bump_test_actuator_delay(
     client : object
         The EFD client object to retrieve data from.
     bt_results : pandas.DataFrame
-        The bump test results data.
+        The bump test results data. Used if input is a bump test.
+        Default is None
+    event : lsst.summit.utils.tmaUtils.TMAEvent
+         A TMAEvent. Used if input is a slew event.
+         default is None
     fa_id : int
         The ID of the force actuator.
     bt_index : int, optional
@@ -45,29 +51,37 @@ def plot_bump_test_actuator_delay(
     """
     # Grab the Force Actuator Data from its ID
     fa_data = force_actuator_from_id(fa_id)
+    if bt_results is not None and event is not None:
+        raise ValueError("You can't specify both a bump test and an event.")
+    if bt_results is not None:
+        # This branch is followed if the input is a bump test
+        # Extract bump test results for a given force actuator
+        bt_result = bt_results[bt_results["actuatorId"] == fa_id]
+        primary_bump = f"primaryTest{fa_data.index}"
+        plot_name = "Bump Test"
+        t_start = Time(
+            bt_result[bt_result[primary_bump] == BumpTest.TESTINGPOSITIVE][
+                "timestamp"
+            ].values[bt_index]
+            - 1.0,
+            format="unix_tai",
+            scale="tai",
+        )
 
-    # Extract bump test results for a given force actuator
-    bt_result = bt_results[bt_results["actuatorId"] == fa_id]
+        t_end = Time(
+            t_start + TimeDelta(BUMP_TEST_DURATION, format="sec"),
+            format="unix_tai",
+            scale="tai",
+        )
+    if event is not None:
+        # This branch is followed if the input is a TMAEvent
+        plot_name = f"Event {event.dayObs} - {event.seqNum}"
+        t_start = event.begin
+        t_end = event.end
 
     # Plot preparation
-    primary_bump = f"primaryTest{fa_data.index}"
-    primary_force = f"primaryCylinderForce{fa_data.index}"
+    primary_force = f"zForce{fa_data.z_index}"
     primary_applied = f"zForces{fa_data.z_index}"
-
-    t_start = Time(
-        bt_result[bt_result[primary_bump] == BumpTest.TESTINGPOSITIVE][
-            "timestamp"
-        ].values[bt_index]
-        - 1.0,
-        format="unix_tai",
-        scale="tai",
-    )
-
-    t_end = Time(
-        t_start + TimeDelta(BUMP_TEST_DURATION, format="sec"),
-        format="unix_tai",
-        scale="tai",
-    )
 
     measured_forces = getEfdData(
         client,
@@ -107,7 +121,7 @@ def plot_bump_test_actuator_delay(
     timestamp = measured_forces.index[0].isoformat().split(".")[0]
     fig.subplots_adjust(wspace=0.3)
     fig.suptitle(
-        f"Bump Test Response Delay. Actuator ID {fa_id}\n {timestamp}", fontsize=18
+        f"{plot_name} Response Delay. Actuator ID {fa_id}\n {timestamp}", fontsize=18
     )
 
     ax1 = fig.add_subplot(2, 2, 1)
@@ -132,29 +146,41 @@ def plot_bump_test_actuator_delay(
     )
 
     if fa_data.actuator_type.name == "DAA":
-        secondary_bump = f"secondaryTest{fa_data.s_index}"
-        secondary_force = f"secondaryCylinderForce{fa_data.s_index}"
+        if bt_results is not None:
+            # This branch is followed if the input is a bump test
+            # Extract bump test results for a given force actuator
+            bt_result = bt_results[bt_results["actuatorId"] == fa_id]
+            secondary_bump = f"secondaryTest{fa_data.s_index}"
+
+            t_start = Time(
+                bt_result[bt_result[secondary_bump] == 2]["timestamp"].values[bt_index]
+                - 1.0,
+                format="unix_tai",
+                scale="tai",
+            )
+
+            t_end = Time(
+                t_start + TimeDelta(BUMP_TEST_DURATION, format="sec"),
+                format="unix_tai",
+                scale="tai",
+            )
+
+        if event is not None:
+            # This branch is followed if the input is a TMAEvent
+            t_start = event.begin
+            t_end = event.end
+
         secondary_name = fa_data.orientation.name
 
         if secondary_name in ["X_PLUS", "X_MINUS"]:
+            secondary_force = f"xForce{fa_data.x_index}"
             secondary_applied = f"xForces{fa_data.x_index}"
         elif secondary_name in ["Y_PLUS", "Y_MINUS"]:
+            secondary_force = f"yForce{fa_data.y_index}"
             secondary_applied = f"yForces{fa_data.y_index}"
         else:
             raise ValueError(f"Unknown secondary name {secondary_name}")
 
-        t_start = Time(
-            bt_result[bt_result[secondary_bump] == 2]["timestamp"].values[bt_index]
-            - 1.0,
-            format="unix_tai",
-            scale="tai",
-        )
-
-        t_end = Time(
-            t_start + TimeDelta(BUMP_TEST_DURATION, format="sec"),
-            format="unix_tai",
-            scale="tai",
-        )
 
         secondary_measured_forces = getEfdData(
             client,
@@ -176,7 +202,7 @@ def plot_bump_test_actuator_delay(
         sec_app_times = secondary_applied_forces["timestamp"].values - t0
         sec_meas_times = secondary_measured_forces["timestamp"].values - t0
         sec_app_forces = secondary_applied_forces[secondary_applied].values
-        sec_meas_forces = secondary_measured_forces[secondary_force].values
+        sec_meas_forces = secondary_measured_forces[secondary_force].values * np.sqrt(2.0)
 
         # Find best shift - the sqrt(2) you see below is to account for the
         # fact that the secondary forces are measured in the diagonal direction
@@ -197,7 +223,7 @@ def plot_bump_test_actuator_delay(
             secondary_name,
         )
 
-        plot_bump_test_actuator_delay_secondary(
+        plot_actuator_delay_secondary(
             ax4,
             sec_app_times,
             sec_app_forces,
@@ -265,7 +291,8 @@ def get_best_shift(
     """
     param_0 = [0.10]
     args_0 = [mtime, mforces, atime, aforces]
-    best_shift = minimize(match_function, param_0, args=args_0, method="Powell")
+    bounds = [(-0.5, 0.5)] # Limit shift to +/- 500ms
+    best_shift = minimize(match_function, param_0, bounds=bounds, args=args_0, method="Powell")
     delay = best_shift.x[0] * 1000.0
     shifted_forces = np.interp(atime + best_shift.x[0], mtime, mforces)
 
@@ -298,9 +325,6 @@ def plot_primary_forces(
     ax.set_title("Primary - Z")
     ax.plot(app_times, app_forces, label="Applied")
     ax.plot(meas_times, meas_forces, label="Measured")
-
-    ax.set_xlim(0, BUMP_TEST_DURATION)
-    ax.set_ylim(-400, 400)
     ax.set_xlabel("Time (seconds)")
     ax.set_ylabel("Force (N)")
     ax.grid(":", alpha=0.25)
@@ -332,11 +356,9 @@ def plot_shifted_primary_forces(
     """
     ax.plot(app_times, app_forces, label="Applied")
     ax.plot(app_times, shift_forces, label="Shifted Measured")
-
-    ax.text(6, 200, f"Delay = {force_delay:.1f} ms")
+    shift_y_coord = np.min(shift_forces) + 0.2 * (np.max(shift_forces) - np.min(shift_forces))
+    ax.text(1, shift_y_coord, f"Delay = {force_delay:.1f} ms")
     ax.set_title("Primary - Z")
-    ax.set_xlim(0, BUMP_TEST_DURATION)
-    ax.set_ylim(-400, 400)
     ax.set_xlabel("Time (seconds)")
     ax.set_ylabel("Force (N)")
     ax.grid(":", alpha=0.25)
@@ -373,15 +395,13 @@ def plot_secondary_forces(
     ax.plot(sec_meas_times, sec_meas_forces / np.sqrt(2.0), label="Measured")
 
     ax.set_title(f"Secondary - {secondary_name}")
-    ax.set_xlim(0, BUMP_TEST_DURATION)
-    ax.set_ylim(-400, 400)
     ax.set_xlabel("Time (seconds)")
     ax.set_ylabel("Force (N)")
     ax.legend()
     ax.grid(":", alpha=0.2)
 
 
-def plot_bump_test_actuator_delay_secondary(
+def plot_actuator_delay_secondary(
     ax: plt.Axes,
     sec_app_times: np.array,
     sec_app_forces: np.array,
@@ -413,11 +433,10 @@ def plot_bump_test_actuator_delay_secondary(
         sec_sft_forces,
         label="Shifted Measured",
     )
-    ax.text(6, 200, f"Delay = {secondary_delay:.1f} ms")
+    shift_y_coord = np.min(sec_sft_forces) + 0.2 * (np.max(sec_sft_forces) - np.min(sec_sft_forces))
+    ax.text(1, shift_y_coord, f"Delay = {secondary_delay:.1f} ms")
 
     ax.set_title(f"Secondary - {secondary_name}")
-    ax.set_xlim(0, BUMP_TEST_DURATION)
-    ax.set_ylim(-400, 400)
     ax.set_xlabel("Time (seconds)")
     ax.set_ylabel("Force (N)")
     ax.legend()
