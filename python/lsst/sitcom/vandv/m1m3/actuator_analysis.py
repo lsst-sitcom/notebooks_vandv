@@ -444,18 +444,36 @@ def plot_actuator_delay_secondary(
 
 
 def plot_delay_histograms(fig, timestamp, primary_delays, secondary_delays):
+    """
+    Plot the histograms of the actuator delays.
+
+    Parameters
+    ----------
+    fig : plt.Figure
+        The matplotlib figure object to plot the results on.
+    timestamp : str
+        The timestamp of the data.
+    primary_delays : numpy.array
+        The primary actuator delays.
+    secondary_delays : numpy.array
+        The secondary actuator delays.
+    """
     ax1, ax2 = fig.subplots(1, 2)
     
-    ax1.set_title(f"Primary_delays {timestamp}")
+    ax1.set_title(
+        f"Primary_delays {timestamp}\n"
+        f"Mean = {np.mean(primary_delays):.1f} ms"
+        )
     ax1.hist(primary_delays, bins = 20)
-    ax1.text(60, 20, f"Mean = {np.mean(primary_delays):.1f} ms")
     ax1.set_xlim(50,150)
     ax1.set_xlabel("Delay (ms)")
     ax1.grid(":", alpha=0.25)
     
-    ax2.set_title(f"Secondary_delays {timestamp}")
+    ax2.set_title(
+        f"Secondary_delays {timestamp}\n"
+        f"Mean = {np.mean(secondary_delays):.1f} ms"
+        )
     ax2.hist(secondary_delays, bins = 20)
-    ax2.text(60, 20, f"Mean = {np.mean(secondary_delays):.1f} ms")
     ax2.set_xlim(50,150)
     ax2.set_xlabel("Delay (ms)")
     ax2.grid(":", alpha=0.25)
