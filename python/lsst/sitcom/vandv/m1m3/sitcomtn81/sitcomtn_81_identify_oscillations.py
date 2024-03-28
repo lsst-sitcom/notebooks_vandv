@@ -354,16 +354,16 @@ class IdentifyOscillationEvents:
             peak_indicies = find_peaks(rolling_std_val, height=self.peak_height)[0]
 
             # keep time and height of peaks
-            peak_dict[f"hp_{i}_peak_times"] = data_dict["hpmf"]["snd_timestamp_utc"][
+            peak_dict[f"hp_{i}_peak_times"] = data_dict["hpmf"]["snd_timestamp_utc"].iloc[
                 peak_indicies
             ].values
-            peak_dict[f"hp_{i}_peak_heights"] = rolling_std_val[peak_indicies].values
+            peak_dict[f"hp_{i}_peak_heights"] = rolling_std_val.iloc[peak_indicies].values
             start_ind = [np.max([i - 500, 0]) for i in peak_indicies]
             stop_ind = [
                 np.min([i + 500, len(rolling_mean_val) - 1]) for i in peak_indicies
             ]
             peak_dict[f"hp_{i}_peak_rmean_diff"] = (
-                rolling_mean_val[stop_ind].values - rolling_mean_val[start_ind].values
+                rolling_mean_val[stop_ind].values - rolling_mean_val.iloc[start_ind].values
             )
 
             # for each peak combine by looking at all peaks within
