@@ -256,41 +256,47 @@ def update_block_218(file_name_out, pair_list, midpoint):
 
     sleep_command = data["scripts"][6] #this is the sleep command in BLOCK-218
     track_command = data["scripts"][3] #this is the track command in BLOCK-218
+    image_command = data["scripts"][4]
     domeoff_command = data["scripts"][2] #this is the dome tracking off command in BLOCK-218
     domeon_command = data["scripts"][11] #this is the dome tracking on command in BLOCK-218
+    streamoff_command = data["scripts"][10] #this is the streaming off command in BLOCK-218
+    streamon_command = data["scripts"][5] #this is the streaming on command in BLOCK-218
      
-    commands_to_pop = 3
+    commands_to_pop = 1
     commands = []
     for i in range(commands_to_pop):  
         #remove last commands, will be added later
         commands.append(data["scripts"].pop()) 
+    data["scripts"].append(copy.deepcopy(sleep_command)) #add a sleep period after first pair
+    ncommands_set = 12
     
-    data["scripts"].append(copy.deepcopy(domeon_command)) # 10 append first a dome tracking command     
     for i in range(len(pair_list)-1):
-        #copy a set of 8 instructions that will be repeated for each pair
-        data["scripts"].append(copy.deepcopy(sleep_command)) #11
-        data["scripts"].append(copy.deepcopy(track_command))     
+        #copy a set of ncommands_set instructions that will be repeated for each pair
+        data["scripts"].append(copy.deepcopy(track_command))   #mid point tracking  
         data["scripts"].append(copy.deepcopy(domeoff_command))    
+        data["scripts"].append(copy.deepcopy(track_command))   #star 1 tracking  
+        data["scripts"].append(copy.deepcopy(image_command))     
+        data["scripts"].append(copy.deepcopy(streamon_command))     
         data["scripts"].append(copy.deepcopy(sleep_command)) 
-        data["scripts"].append(copy.deepcopy(track_command))     
+        data["scripts"].append(copy.deepcopy(track_command))  #star 2 tracking   
         data["scripts"].append(copy.deepcopy(sleep_command)) 
-        data["scripts"].append(copy.deepcopy(track_command))     
+        data["scripts"].append(copy.deepcopy(track_command))  #star 1 again   
+        data["scripts"].append(copy.deepcopy(streamoff_command))     
         data["scripts"].append(copy.deepcopy(domeon_command))     
+        data["scripts"].append(copy.deepcopy(sleep_command)) 
 
         #change tracking command to follow mid point of the pair
-        data["scripts"][(i*8)+12]["parameters"]["target_name"] = ""
-        data["scripts"][(i*8)+12]["parameters"]["slew_icrs"] = {"ra":str(midpoint[i+1][0]),"dec":str(midpoint[i+1][1])}
+        data["scripts"][(i*ncommands_set)+13]["parameters"]["target_name"] = ""
+        data["scripts"][(i*ncommands_set)+13]["parameters"]["slew_icrs"] = {"ra":str(midpoint[i+1][0]),"dec":str(midpoint[i+1][1])}
         #change tracking commands to follow pair
-        data["scripts"][(i*8)+15]["parameters"]["target_name"] = ""
-        data["scripts"][(i*8)+15]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][0]),"dec":str(pair_list[i+1][1])}
-        data["scripts"][(i*8)+17]["parameters"]["target_name"] = ""
-        data["scripts"][(i*8)+17]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][2]),"dec":str(pair_list[i+1][3])}
+        data["scripts"][(i*ncommands_set)+15]["parameters"]["target_name"] = ""
+        data["scripts"][(i*ncommands_set)+15]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][0]),"dec":str(pair_list[i+1][1])}
+        data["scripts"][(i*ncommands_set)+19]["parameters"]["target_name"] = ""
+        data["scripts"][(i*ncommands_set)+19]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][2]),"dec":str(pair_list[i+1][3])}
+        data["scripts"][(i*ncommands_set)+21]["parameters"]["target_name"] = ""
+        data["scripts"][(i*ncommands_set)+21]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][0]),"dec":str(pair_list[i+1][1])}
 
-    for i in range(commands_to_pop):
-        #put popped commands back in reverse order
-        if i == 1:
-            continue #ignore the dome tracking on command, already in previous set 
-        data["scripts"].append(commands[commands_to_pop-i-1]) 
+    data["scripts"].append(commands[0]) #add first popped command
 
     with open(file_name_out, "w") as block_file_out:
         json.dump(data, block_file_out, indent=4)
@@ -312,7 +318,7 @@ def main():
         "--t0",
         dest="t0",
         help="in UTC, central time at which observations will take place",
-        default= '2024-4-10 23:55:00',
+        default= '2024-4-11 23:55:00',
         type="string",
     )
     parser.add_option(
