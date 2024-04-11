@@ -293,7 +293,7 @@ def update_block_218(file_name_out, pair_list, midpoint):
         data["scripts"].append(commands[commands_to_pop-i-1]) 
 
     with open(file_name_out, "w") as block_file_out:
-        json.dump(data, block_file_out)
+        json.dump(data, block_file_out, indent=4)
 
 def main():
 
