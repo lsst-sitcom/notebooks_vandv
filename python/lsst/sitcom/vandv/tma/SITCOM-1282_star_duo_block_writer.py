@@ -117,6 +117,8 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
     star_pair_radec: 2D list with floats (degrees)
         contains a nested list with right ascension, declination of the pairs of stars
         in the format [ra1,dec1,ra2,dec2] for each row
+    star_pair_hd: 2D list with integers 
+        HD denomination of the star pair
     star_pair_radecmid: 2D list with floats (degrees)
         contains a nested list with ra-dec positions, each row with one ra, dec  
         corresponding to the mid point position of the pair     
@@ -134,14 +136,19 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
     selection_vmag = (table['Vmag'] < Vmag_max)
     ra = table[selection_vmag]['RAJ2000']
     dec = table[selection_vmag]['DEJ2000']
+    hd = table[selection_vmag]['HD']
     stars_radec = SkyCoord(ra,dec,unit=(u.hourangle,u.deg),frame='fk5') #YBSC is in FK5 ref frame
-
+    
     time = Time(t0) #in UTC
     stars_altaz = stars_radec.transform_to(AltAz(obstime=time,location=rubin_site))
     #additionally select all stars with an altitude above elevation_min
     selection_alt = (stars_altaz.alt > elevation_min*u.deg)
 
+    #zip with HD denomination
+    stars_altaz_hd = zip(stars_altaz[selection_alt],hd[selection_alt])
+    
     star_pair_radec = []
+    star_pair_hd = []
     star_pair_altazmid = []
     star_pair_radecmid = []
     pair_count = 0
@@ -152,16 +159,17 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
     # for every selected star, pair it with those that are within sep_range 
     # this will create duplicate pairs which will be selected out with the 
     # check_altaz function outside this function
-    for i,refstar in enumerate(stars_altaz[selection_alt]):
+    for i,(refstar,refhd) in enumerate(stars_altaz_hd):
         sep = refstar.separation(stars_altaz[selection_alt])
         selection_sep = (sep > sep_range[0]*u.deg ) & (sep < sep_range[1]*u.deg)
         if len(sep[selection_sep]) > 0:
             for j in range(len(sep[selection_sep])):
+                hd1 = refhd
                 ra1 = refstar.transform_to('icrs').ra.deg
                 dec1 = refstar.transform_to('icrs').dec.deg
-                #print(ra1,refstar.transform_to('icrs').ra.to_string(unit='hour',decimal=True))
                 ra2 = stars_altaz[selection_alt][selection_sep][j].transform_to('icrs').ra.deg
                 dec2 = stars_altaz[selection_alt][selection_sep][j].transform_to('icrs').dec.deg
+                hd2 = hd[selection_alt][selection_sep][j]
                 ramid, decmid = calculate_midpoint(ra1,dec1,ra2,dec2)
                 az, alt = calculate_midpoint(refstar.az.deg,refstar.alt.deg,
                                              stars_altaz[selection_alt][selection_sep][j].az.deg,
@@ -175,6 +183,7 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
                     ra2 = ra2/15.
                     ramid = ramid/15.
                     star_pair_radec.append([ra1,dec1,ra2,dec2])
+                    star_pair_hd.append([hd1,hd2])
                     star_pair_radecmid.append([ramid,decmid])
                     star_pair_altazmid.append([alt,az])
                     pair_count = pair_count + 1
@@ -188,7 +197,7 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
     plot_altaz(star_pair_altazmid)
     if pair_found == False:
         print("No pairs were found")  
-    return star_pair_radec,star_pair_radecmid,star_pair_altazmid
+    return star_pair_radec,star_pair_hd,star_pair_radecmid,star_pair_altazmid
 
 def update_block_250(file_name_out, pair_list):
     """ Function to rewrite BLOCK-250 with a new one with the computed star pairs
@@ -232,7 +241,7 @@ def update_block_250(file_name_out, pair_list):
     with open(file_name_out, "w") as block_file_out:
         json.dump(data, block_file_out)
 
-def update_block_218(file_name_out, pair_list, midpoint):
+def update_block_218(file_name_out, pair_list, star_pair_hd, midpoint):
     """ Function to rewrite BLOCK-218 with a new one with the computed star pairs
     Parameters
     ----------
@@ -241,6 +250,8 @@ def update_block_218(file_name_out, pair_list, midpoint):
     pair_list: 2D list with floats (degrees)
         contains a nested list with right ascension, declination of the pairs of stars
         in the format [ra1,dec1,ra2,dec2] for each row
+    star_pair_hd: 2D list with integers 
+        HD denomination of the star pair
     midpoint: 2D list with floats (degrees)
         contains a nested list with ra-dec positions, each row with one ra, dec  
         corresponding to the mid point position of the pair             
@@ -254,6 +265,8 @@ def update_block_218(file_name_out, pair_list, midpoint):
     
     with open("BLOCK-218.json", "r") as block_file_ref:
         data = json.load(block_file_ref)
+
+    print(star_pair_hd)
 
     sleep_command = data["scripts"][6] #this is the sleep command in BLOCK-218
     track_command = data["scripts"][3] #this is the track command in BLOCK-218
@@ -288,14 +301,17 @@ def update_block_218(file_name_out, pair_list, midpoint):
 
         #change tracking command to follow mid point of the pair
         data["scripts"][(i*ncommands_set)+13]["parameters"]["target_name"] = ""
-        data["scripts"][(i*ncommands_set)+13]["parameters"]["slew_icrs"] = {"ra":str(midpoint[i+1][0]),"dec":str(midpoint[i+1][1])}
+        data["scripts"][(i*ncommands_set)+13]["parameters"]["slew_icrs"] = {"ra":str(midpoint[i][0]),"dec":str(midpoint[i][1])}
         #change tracking commands to follow pair
-        data["scripts"][(i*ncommands_set)+15]["parameters"]["target_name"] = ""
-        data["scripts"][(i*ncommands_set)+15]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][0]),"dec":str(pair_list[i+1][1])}
-        data["scripts"][(i*ncommands_set)+19]["parameters"]["target_name"] = ""
-        data["scripts"][(i*ncommands_set)+19]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][2]),"dec":str(pair_list[i+1][3])}
-        data["scripts"][(i*ncommands_set)+21]["parameters"]["target_name"] = ""
-        data["scripts"][(i*ncommands_set)+21]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i+1][0]),"dec":str(pair_list[i+1][1])}
+        #star 1
+        data["scripts"][(i*ncommands_set)+15]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
+        data["scripts"][(i*ncommands_set)+15]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
+        #star 2
+        data["scripts"][(i*ncommands_set)+19]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][1])
+        data["scripts"][(i*ncommands_set)+19]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][2]),"dec":str(pair_list[i][3])}
+        #star 1 again
+        data["scripts"][(i*ncommands_set)+21]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
+        data["scripts"][(i*ncommands_set)+21]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
 
     data["scripts"].append(commands[0]) #add first popped command
 
@@ -353,7 +369,7 @@ def main():
     
     (options, args) = parser.parse_args()
 
-    (pair_list,radecmid, altaz) = compute_pair_list(options.max_nb_pairs, 
+    (pair_list, hd, radecmid, altaz) = compute_pair_list(options.max_nb_pairs, 
                                           options.Vmag_max, 
                                           options.t0, 
                                           [options.min_sep, options.max_sep], 
@@ -362,9 +378,9 @@ def main():
     if len(pair_list) < 1:
         return -1
     #update_block_250("BLOCK-250_updated.json",pair_list)
-    update_block_218("BLOCK-218_updated.json",pair_list,radecmid)
+    update_block_218("BLOCK-218_updated.json",pair_list,hd,radecmid)
     for i in range(len(pair_list)):
-        print(i,pair_list[i],altaz[i])
+        print(i,pair_list[i],hd[i],altaz[i])
 
 if __name__ == "__main__":
     main()
