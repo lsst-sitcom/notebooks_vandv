@@ -298,18 +298,18 @@ def update_block_218(file_name_out, pair_list, star_pair_hd, midpoint):
         data["scripts"].append(copy.deepcopy(sleep_command)) 
 
         #change tracking command to follow mid point of the pair
-        data["scripts"][(i*ncommands_set)+13]["parameters"]["target_name"] = ""
+        data["scripts"][(i*ncommands_set)+13]["parameters"]["target_name"] = "mid_point_HD_"+str(star_pair_hd[i][0])+"_"+str(star_pair_hd[i][1])
         data["scripts"][(i*ncommands_set)+13]["parameters"]["slew_icrs"] = {"ra":str(midpoint[i][0]),"dec":str(midpoint[i][1])}
         #change tracking commands to follow pair
         #star 1
         data["scripts"][(i*ncommands_set)+15]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
-        data["scripts"][(i*ncommands_set)+15]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
+        #data["scripts"][(i*ncommands_set)+15]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
         #star 2
         data["scripts"][(i*ncommands_set)+19]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][1])
-        data["scripts"][(i*ncommands_set)+19]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][2]),"dec":str(pair_list[i][3])}
+        #data["scripts"][(i*ncommands_set)+19]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][2]),"dec":str(pair_list[i][3])}
         #star 1 again
         data["scripts"][(i*ncommands_set)+21]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
-        data["scripts"][(i*ncommands_set)+21]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
+        #data["scripts"][(i*ncommands_set)+21]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
 
     data["scripts"].append(commands[0]) #add first popped command
 
