@@ -335,7 +335,7 @@ def main():
         "--t0",
         dest="t0",
         help="in UTC, central time at which observations will take place",
-        default= '2024-4-11 23:55:00',
+        default= '2024-4-15 23:55:00',
         type="string",
     )
     parser.add_option(
