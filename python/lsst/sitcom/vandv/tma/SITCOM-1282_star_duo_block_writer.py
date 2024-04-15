@@ -266,8 +266,6 @@ def update_block_218(file_name_out, pair_list, star_pair_hd, midpoint):
     with open("BLOCK-218.json", "r") as block_file_ref:
         data = json.load(block_file_ref)
 
-    print(star_pair_hd)
-
     sleep_command = data["scripts"][6] #this is the sleep command in BLOCK-218
     track_command = data["scripts"][3] #this is the track command in BLOCK-218
     image_command = data["scripts"][4]
