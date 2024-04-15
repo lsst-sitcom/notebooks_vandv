@@ -134,9 +134,7 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
     selection_vmag = (table['Vmag'] < Vmag_max)
     ra = table[selection_vmag]['RAJ2000']
     dec = table[selection_vmag]['DEJ2000']
-    #print(ra,dec)
     stars_radec = SkyCoord(ra,dec,unit=(u.hourangle,u.deg),frame='fk5') #YBSC is in FK5 ref frame
-    #print(stars_radec)
 
     time = Time(t0) #in UTC
     stars_altaz = stars_radec.transform_to(AltAz(obstime=time,location=rubin_site))
@@ -155,13 +153,13 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
     # this will create duplicate pairs which will be selected out with the 
     # check_altaz function outside this function
     for i,refstar in enumerate(stars_altaz[selection_alt]):
-        #print("**************",refstar)
         sep = refstar.separation(stars_altaz[selection_alt])
         selection_sep = (sep > sep_range[0]*u.deg ) & (sep < sep_range[1]*u.deg)
         if len(sep[selection_sep]) > 0:
             for j in range(len(sep[selection_sep])):
                 ra1 = refstar.transform_to('icrs').ra.deg
                 dec1 = refstar.transform_to('icrs').dec.deg
+                #print(ra1,refstar.transform_to('icrs').ra.to_string(unit='hour',decimal=True))
                 ra2 = stars_altaz[selection_alt][selection_sep][j].transform_to('icrs').ra.deg
                 dec2 = stars_altaz[selection_alt][selection_sep][j].transform_to('icrs').dec.deg
                 ramid, decmid = calculate_midpoint(ra1,dec1,ra2,dec2)
@@ -173,6 +171,9 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
                 if check_altaz(alt,az,star_pair_altazmid,alt_interval,az_interval):
                     continue
                 else:
+                    ra1 = ra1/15. #convert from ra in decimal degrees to decimal hours
+                    ra2 = ra2/15.
+                    ramid = ramid/15.
                     star_pair_radec.append([ra1,dec1,ra2,dec2])
                     star_pair_radecmid.append([ramid,decmid])
                     star_pair_altazmid.append([alt,az])
