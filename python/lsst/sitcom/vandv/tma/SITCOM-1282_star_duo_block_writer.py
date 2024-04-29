@@ -153,8 +153,8 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
     star_pair_radecmid = []
     pair_count = 0
     pair_found = False
-    alt_interval = 1 #15 # degrees, minimum interval between pairs in altitude 
-    az_interval = 1 #30 # degrees, minimum interval between pairs in azimuth
+    alt_interval = 5 #15 # degrees, minimum interval between pairs in altitude 
+    az_interval = 10 #30 # degrees, minimum interval between pairs in azimuth
 
     # for every selected star, pair it with those that are within sep_range 
     # this will create duplicate pairs which will be selected out with the 
@@ -274,7 +274,7 @@ def update_block_218(file_name_out, pair_list, star_pair_hd, midpoint):
     streamoff_command = data["scripts"][10] #this is the streaming off command in BLOCK-218
     streamon_command = data["scripts"][5] #this is the streaming on command in BLOCK-218
      
-    commands_to_pop = 1
+    commands_to_pop = 12 #1
     commands = []
     for i in range(commands_to_pop):  
         #remove last commands, will be added later
@@ -298,17 +298,17 @@ def update_block_218(file_name_out, pair_list, star_pair_hd, midpoint):
         data["scripts"].append(copy.deepcopy(sleep_command)) 
 
         #change tracking command to follow mid point of the pair
-        data["scripts"][(i*ncommands_set)+13]["parameters"]["target_name"] = "mid_point_HD_"+str(star_pair_hd[i][0])+"_"+str(star_pair_hd[i][1])
+        data["scripts"][(i*ncommands_set)+13-commands_to_pop]["parameters"]["target_name"] = "mid_point_HD_"+str(star_pair_hd[i][0])+"_"+str(star_pair_hd[i][1])
         data["scripts"][(i*ncommands_set)+13]["parameters"]["slew_icrs"] = {"ra":str(midpoint[i][0]),"dec":str(midpoint[i][1])}
         #change tracking commands to follow pair
         #star 1
-        data["scripts"][(i*ncommands_set)+15]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
+        data["scripts"][(i*ncommands_set)+15-commands_to_pop]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
         #data["scripts"][(i*ncommands_set)+15]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
         #star 2
-        data["scripts"][(i*ncommands_set)+19]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][1])
+        data["scripts"][(i*ncommands_set)+19-commands_to_pop]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][1])
         #data["scripts"][(i*ncommands_set)+19]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][2]),"dec":str(pair_list[i][3])}
         #star 1 again
-        data["scripts"][(i*ncommands_set)+21]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
+        data["scripts"][(i*ncommands_set)+21-commands_to_pop]["parameters"]["target_name"] = "HD "+str(star_pair_hd[i][0])
         #data["scripts"][(i*ncommands_set)+21]["parameters"]["slew_icrs"] = {"ra":str(pair_list[i][0]),"dec":str(pair_list[i][1])}
 
     data["scripts"].append(commands[0]) #add first popped command
@@ -333,7 +333,7 @@ def main():
         "--t0",
         dest="t0",
         help="in UTC, central time at which observations will take place",
-        default= '2024-4-15 23:55:00',
+        default= '2024-4-17 23:55:00',
         type="string",
     )
     parser.add_option(
@@ -354,7 +354,7 @@ def main():
         "--minalt",
         dest="elevation_min",
         help="minimum elevation for stars in the pair, NOTE that some might go below this elevation threshold as the sky rotates during the BLOCK",
-        default=15.,
+        default=40.,
         type="float",
     )
     parser.add_option(
