@@ -174,7 +174,6 @@ def compute_pair_list(nb_pairs, Vmag_max, t0, sep_range, elevation_min):
                 az, alt = calculate_midpoint(refstar.az.deg,refstar.alt.deg,
                                              stars_altaz[selection_alt][selection_sep][j].az.deg,
                                              stars_altaz[selection_alt][selection_sep][j].alt.deg)
-                alt_old = (refstar.alt.deg + stars_altaz[selection_alt][selection_sep][j].alt.deg)/2. 
                 az = (refstar.az.deg + stars_altaz[selection_alt][selection_sep][j].az.deg)/2. 
                 if check_altaz(alt,az,star_pair_altazmid,alt_interval,az_interval):
                     continue
