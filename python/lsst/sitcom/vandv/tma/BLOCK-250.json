@@ -1,0 +1,116 @@
+{
+    "name": "BLOCK-250",
+    "program": "BLOCK-250",
+    "constraints": [],
+    "scripts": [
+        {
+            "name": "maintel/track_target.py",
+            "standard": true,
+            "parameters": {
+                "target_name": "HD 37128",
+                "ignore": [
+                    "mtm1m3",
+                    "mtrotator"
+                ]
+            }
+        },
+        {
+            "name": "maintel/take_image_anycam.py",
+            "standard": true,
+            "parameters": {
+                "gencam": [
+                    {
+                        "index": 101,
+                        "exp_times": 6.0,
+                        "nimages": 1,
+                        "image_type": "OBJECT"
+                    },
+                    {
+                        "index": 102,
+                        "exp_times": 5.0,
+                        "nimages": 1,
+                        "image_type": "OBJECT"
+                    },
+                    {
+                        "index": 103,
+                        "exp_times": 0.1,
+                        "nimages": 1,
+                        "image_type": "OBJECT"
+                    }
+                ],
+                "program": "$program",
+                "reason": "$program",
+                "ignore": [
+                    "mtm1m3",
+                    "mtrotator"
+                ]
+            }
+        },
+        {
+            "name": "run_command.py",
+            "standard": true,
+            "parameters": {
+                "component": "GenericCamera:103",
+                "cmd": "startStreamingMode",
+                "parameters": {
+                    "expTime": 0.012
+                }
+            }
+        },
+        {
+            "name": "sleep.py",
+            "standard": true,
+            "parameters": {
+                "sleep_for": 40
+            }
+        },
+        {
+            "name": "maintel/track_target.py",
+            "standard": true,
+            "parameters": {
+                "slew_icrs": {
+                  "ra": "05:30:40",
+                  "dec": "-00:55:26"
+                },
+                "target_name": "EmptyField",
+                "ignore": [
+                    "mtm1m3",
+                    "mtrotator"
+                ]
+            }
+        },
+        {
+            "name": "sleep.py",
+            "standard": true,
+            "parameters": {
+                "sleep_for": 10
+            }
+        },
+        {
+            "name": "maintel/track_target.py",
+            "standard": true,
+            "parameters": {
+                "target_name": "HD 37128",
+                "ignore": [
+                    "mtm1m3",
+                    "mtrotator"
+                ]
+            }
+        },
+        {
+            "name": "sleep.py",
+            "standard": true,
+            "parameters": {
+                "sleep_for": 40
+            }
+        },
+        {
+            "name": "run_command.py",
+            "standard": true,
+            "parameters": {
+                "component": "GenericCamera:103",
+                "cmd": "stopStreamingMode"
+            }
+        }
+    ]
+}

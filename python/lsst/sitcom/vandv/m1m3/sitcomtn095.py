@@ -638,13 +638,13 @@ def run_test_settling_time(dayObs, check_interval, block, outdir, log_file, verb
     plt.savefig(outdir + "/settletime_rotation_xyz.png")
 
     plt.clf()
-    plt.scatter(az_agg,el_agg,marker='.',color='black')
+    plt.scatter(az_agg,el_agg,marker='.',color='black',label='Slew event')
     plt.scatter(az_ypos_fails_agg,el_ypos_fails_agg,marker='o',color='blue',label='yPosition fails')
     plt.scatter(az_yrot_fails_agg,el_yrot_fails_agg,marker='x',color='red',label='yRotation fails')
     plt.title("Azimuth/Elevation distribution of soak events")
     plt.xlabel("Azimuth (degrees)")
     plt.ylabel("Elevation (degrees)")
-    plt.legend()
+    plt.legend(loc="lower right")
     plt.savefig(outdir + "/azel.png")
 
     return 0
