@@ -61,7 +61,7 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
     if lut_path is None:
         lut_path = (
             f"{os.environ['HOME']}/notebooks/lsst-ts/ts_m1m3support/"
-            "SettingFiles/Tables/"
+            "SettingFiles/v1/tables/"
         )
 
     lut_file = os.path.join(lut_path, lut_fname)
