@@ -3,6 +3,7 @@ from . import efd
 from . import hexapod
 from . import logger
 from . import m2
+from . import m1m3
 from . import mount
 from . import mtaos
 from . import slew_and_track

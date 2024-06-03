@@ -61,7 +61,7 @@ def lut_elevation_forces(elevation, lut_fname, lut_path=None, as_array=False):
     if lut_path is None:
         lut_path = (
             f"{os.environ['HOME']}/notebooks/lsst-ts/ts_m1m3support/"
-            "SettingFiles/Tables/"
+            "SettingFiles/v1/tables/"
         )
 
     lut_file = os.path.join(lut_path, lut_fname)
@@ -517,21 +517,7 @@ def snapshot_forces_fa_map(
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    # Select actuators based on prefix
-    if "x" in prefix:
-        fa_table = [
-            fa
-            for fa in FATable
-            if fa.orientation in [FAOrientation.X_PLUS, FAOrientation.X_MINUS]
-        ]
-    elif "y" in prefix:
-        fa_table = [
-            fa
-            for fa in FATable
-            if fa.orientation in [FAOrientation.Y_PLUS, FAOrientation.Y_MINUS]
-        ]
-    else:
-        fa_table = FATable
+    fa_table = FATable
 
     # Show mirror area
     if show_mirrors:
@@ -564,15 +550,14 @@ def snapshot_forces_fa_map(
 
     # Fill plot with empty actuators
     data[data == 0] = np.nan
-    for x, y in zip(xact[np.isnan(data)], yact[np.isnan(data)]):
-        empty_actuator = plt.Circle((x, y), size / 550, fc="k")
-        ax.add_patch(empty_actuator)
 
     if np.all(np.isnan(data)):
         raise ValueError("No valid data in the array")
 
+    im_empty = ax.scatter(xact[np.isnan(data)], yact[np.isnan(data)], c="black", s=size)
+
     # Plot valid data
-    im = ax.scatter(xact, yact, c=data, s=size)
+    im = ax.scatter(xact, yact, c=data, s=size)    
 
     if show_ids:
         font_size = font_size if font_size else 0.5 * np.sqrt(size)
