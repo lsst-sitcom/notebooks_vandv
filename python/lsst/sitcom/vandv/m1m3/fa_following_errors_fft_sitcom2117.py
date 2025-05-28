@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import argparse
 from astropy.time import Time, TimeDelta
 
 from lsst.summit.utils.tmaUtils import TMAEventMaker
@@ -9,7 +10,7 @@ from lsst.sitcom.vandv import m1m3
 from lsst.ts.xml.tables.m1m3 import FATable
 
 
-def loop_over_actuators(topic, nb_actuators, t_start, t_end):
+def loop_over_actuators(client, topic, nb_actuators, t_start, t_end):
     print(f"Processing {topic}")
 
     plot_directory = "./plots/"
@@ -61,10 +62,32 @@ def loop_over_actuators(topic, nb_actuators, t_start, t_end):
         plt.close()
 
 
-client = makeEfdClient()
+def main():
+    client = makeEfdClient()
+    parser = argparse.ArgumentParser(
+        description="M1M3 force actuator following errrors FFT analysis"
+    )
+    parser.add_argument(
+        "t_start",
+        type=Time,
+        default="2025-05-27T18:30:15",
+        help="Start time in a valid format: 'YYYY-MM-DD HH:MM:SSZ'",
+    )
+    parser.add_argument(
+        "t_end",
+        type=Time,
+        default="2025-05-27T18:30:24",
+        help="End time in a valid format: 'YYYY-MM-DD HH:MM:SSZ'",
+    )
+    args = parser.parse_args()
 
-t_start = Time("2025-05-27 18:30:15", scale="utc")
-t_end = Time("2025-05-27 18:30:24", scale="utc")
+    loop_over_actuators(
+        client, "primaryCylinderFollowingError", len(FATable), args.t_start, args.t_end
+    )
+    loop_over_actuators(
+        client, "secondaryCylinderFollowingError", 112, args.t_start, args.t_end
+    )
 
-loop_over_actuators("primaryCylinderFollowingError", len(FATable), t_start, t_end)
-loop_over_actuators("secondaryCylinderFollowingError", 112, t_start, t_end)
+
+if __name__ == "__main__":
+    main()
