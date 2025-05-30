@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import os
 import argparse
 from astropy.time import Time, TimeDelta
+from scipy.signal import find_peaks
 
 from lsst.summit.utils.tmaUtils import TMAEventMaker
 from lsst.summit.utils.efdUtils import EfdClient, getEfdData, makeEfdClient
@@ -27,23 +29,46 @@ def fft_plot(fa, client, topic, column, t_start, t_end, actuator_id, plot_direct
     fft_frequency = freqs[positive_mask]
     fft_result = np.fft.fft(df.values, axis=0)
     fft_magnitudes = np.abs(fft_result[positive_mask, :])
-    plt.figure(figsize=(10, 5))
-    if "primary" in column:
-        label = f"Primary actuator {actuator_id}"
-    else:
-        label = f"Secondary actuator {actuator_id}"
-    plt.plot(
-        fft_frequency, fft_magnitudes, label=label
-    )
-    plt.title(f"Power spectrum for {t_start} - {t_end}")
-    plt.xlabel("Frequency [Hz]")
-    plt.ylabel("Magnitude")
-    plt.legend()
-    if "primary" in column:
-        plt.savefig(f"{plot_directory}PA_{actuator_id}.png")
-    else:
-        plt.savefig(f"{plot_directory}SA_{actuator_id}.png")
-    plt.close()
+    peaks, properties = find_peaks(fft_magnitudes[:,0], height=10, distance=5)
+    # Extract peak frequencies and magnitudes
+    peak_freqs = fft_frequency[peaks]
+    peak_magnitudes = fft_magnitudes[peaks, 0]
+    largest = pd.Series(peak_magnitudes).max()
+    threshold = 800
+    if largest > threshold: #make threshold configurable
+
+        print(f"Found anomaly at {actuator_id} above {threshold}, frequency {peak_freqs[pd.Series(peak_magnitudes).idxmax()]:.2f} Hz {largest:.1f}")
+
+        plt.figure(figsize=(10, 5))
+        if "primary" in column:
+            label = f"Primary actuator {actuator_id}"
+        else:
+            label = f"Secondary actuator {actuator_id}"
+        plt.plot(
+            fft_frequency, fft_magnitudes, label=label
+        )
+        plt.title(f"Power spectrum for {t_start} - {t_end}")
+        plt.xlabel("Frequency [Hz]")
+        plt.ylabel("Magnitude")
+        plt.legend()
+        if "primary" in column:
+            plt.savefig(f"{plot_directory}PA_{actuator_id}.png")
+        else:
+            plt.savefig(f"{plot_directory}SA_{actuator_id}.png")
+        plt.close()
+
+        plt.figure(figsize=(10,5))
+        plt.plot(df[FA_error], label=label)
+        plt.title("")
+        plt.xlabel("UTC")
+        plt.ylabel("FA following error")
+        plt.legend()
+        if "primary" in column:
+            plt.savefig(f"{plot_directory}PA_{actuator_id}_FAerror.png")
+        else:
+            plt.savefig(f"{plot_directory}SA_{actuator_id}_FAerror.png")
+        plt.close()
+
 
 def loop_over_actuators(client, column, nb_actuators, t_start, t_end, plot_directory):
 
