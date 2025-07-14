@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from astropy.time import Time
-from logging import CRITICAL, ERROR
+from logging import CRITICAL, ERROR, getLogger
+from typing import Optional
 
 from lsst.summit.utils.efdUtils import (
     EfdClient,
@@ -31,13 +32,15 @@ async def query_m1m3_faults(day_obs_start: int, day_obs_end: int) -> pd.DataFram
     pd.DataFrame
         DataFrame containing the M1M3 faults.
     """
+    logger = getLogger(__name__)
+    
     # Create an EFD client instance
     client = makeEfdClient()
 
     # Get the start and end times for the observation days
     start_time = getDayObsStartTime(day_obs_start)
     end_time = getDayObsEndTime(day_obs_end)
-    print(f"Querying M1M3 faults from {start_time.isot} to {end_time.isot}")
+    logger.info(f"Querying M1M3 faults from {start_time.isot} to {end_time.isot}")
     
     # Query the following columns
     # ['filePath', 'functionName', 'level', 'lineNumber', 'message', 'name', 'traceback'],
@@ -82,8 +85,8 @@ async def query_tma_elevation(start_time: Time, end_time: Time, client: EfdClien
     query = f"""
         SELECT MEAN("actualPosition") as elevation
         FROM "lsst.sal.MTMount.elevation"
-        WHERE time >= '{Time(start_time).isot}Z'
-        AND time <= '{Time(end_time).isot}Z'
+        WHERE time >= '{start_time.isot}Z'
+        AND time <= '{end_time.isot}Z'
         GROUP BY time(1s) fill(none)
     """
 
@@ -92,7 +95,7 @@ async def query_tma_elevation(start_time: Time, end_time: Time, client: EfdClien
     return pd.DataFrame(df)
 
 
-async def map_faults_to_elevation(t_end: Time, client: EfdClient) -> float:
+async def map_faults_to_elevation(t_end: Time, client: EfdClient) -> Optional[float]:
     """
     Map M1M3 faults to the TMA elevation at the end time.
     
@@ -134,7 +137,7 @@ async def add_elevation_to_df(df: pd.DataFrame, client: EfdClient) -> pd.DataFra
         DataFrame with elevation data added.
     """
     timestamps = df.index.to_list()
-    tasks = [map_faults_to_elevation(ts, client) for ts in timestamps]
+    tasks = [map_faults_to_elevation(Time(ts), client) for ts in timestamps]
     elevations = await asyncio.gather(*tasks)
 
     df = df.copy()
