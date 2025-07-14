@@ -6,7 +6,6 @@ import warnings
 import pandas as pd
 from astropy.time import Time
 
-from lsst.ts import utils
 
 try:
     from lsst.rsp import get_node
@@ -15,7 +14,9 @@ except ModuleNotFoundError:
         "Could not find package: lsst.rsp"
         " - the node information will not be available"
     )
-    get_node = lambda: "(not available)"
+
+    def get_node():
+        return "(not available)"
 
 
 __all__ = [
