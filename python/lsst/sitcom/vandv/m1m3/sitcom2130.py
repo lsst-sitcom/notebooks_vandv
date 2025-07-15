@@ -1,5 +1,6 @@
 
 import asyncio
+import enum
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -15,6 +16,25 @@ from lsst.summit.utils.efdUtils import (
     getDayObsStartTime, 
     makeEfdClient
 )
+
+
+class M1M3ErrorCode(enum.IntEnum):
+    """
+    Enum for M1M3 error codes.
+    """
+    AIR = 0x1 << 16
+    DISPLACEMENT = 0x2 << 16
+    INCLINOMETER = 0x3 << 16
+    INTERLOCK = 0x4 << 16
+    FORCE_CONTROLLER = 0x5 << 16
+    CELL_LIGHT = 0x6 << 16
+    POWER_CONTROLLER = 0x7 << 16
+    TIMEOUTS = 0x8 << 16
+    FORCE_ACTUATOR = 0x9 << 16
+    HARDPOINT = 0xA << 16
+    TMA = 0xB << 16
+    USER = 0xC << 16
+
 
 async def query_m1m3_faults(day_obs_start: int, day_obs_end: int) -> pd.DataFrame:
     """
@@ -45,18 +65,11 @@ async def query_m1m3_faults(day_obs_start: int, day_obs_end: int) -> pd.DataFram
     # Query the following columns
     # ['filePath', 'functionName', 'level', 'lineNumber', 'message', 'name', 'traceback'],
     query = f"""
-        SELECT FIRST("filePath") as filePath,
-               FIRST("functionName") as functionName,
-               FIRST("level") as level,
-               FIRST("name") as first_name,
-               FIRST("lineNumber") as lineNumber,
-               FIRST("message") as message,
-               FIRST("traceback") as traceback
-        FROM "lsst.sal.MTM1M3.logevent_logMessage"
+        SELECT errorCode, errorReport, traceback
+        FROM "lsst.sal.MTM1M3.logevent_errorCode"
         WHERE time >= '{start_time.isot}Z'
         AND time <= '{end_time.isot}Z'
-        AND level > 30
-        GROUP BY "name", time(1s) fill(none)
+        AND errorCode > 0
     """
     df = await client.influx_client.query(query)
     df = await add_elevation_to_df(df, client)
@@ -157,30 +170,29 @@ def plot_faults_vs_elevation(df: pd.DataFrame):
     d_start = getDayObsForTime(Time(df.index[0]))
     d_end = getDayObsForTime(Time(df.index[-1]))
     
-    mask_error = df['level'] == ERROR
-    mask_critical = df['level'] == CRITICAL
+    mask_interlock = (df['errorCode'] & M1M3ErrorCode.INTERLOCK) > 0
     
     fig, axs = plt.subplots(2, 1, figsize=(12, 6), sharex=False)
     
     # The first axis contains a histogram of the elevation values when 
     # the faults occurred.
-    axs[0].hist(df['elevation'][mask_error], bins=30, alpha=0.5, 
-                color='red', label='Error Elevation', log=True)
-    axs[0].hist(df['elevation'][mask_critical], bins=30,
-                alpha=0.5, color='black', label='Critical Elevation', log=True)
-    
-    axs[0].set_title(f'Data from {d_start} to {d_end}')
+    axs[0].hist(df[mask_interlock]['elevation'], bins=30, alpha=0.5, 
+                color='red', label='Interlock Faults', log=True)
+    axs[0].hist(df[~mask_interlock]['elevation'], bins=30, alpha=0.5, 
+                color='black', label='Non-Interlock Faults', log=True)
+
+    axs[0].set_title(f'Data from {d_start} to {d_end} - {df.index.size} data points')
     axs[0].set_xlabel('Fault Occurrences')
     axs[0].set_ylabel('Count')
     axs[0].legend()
 
     # The second axis contains a time plot showing when the faults occurred
     # and the TMA elevation at that time.
-    axs[1].scatter(df.index[mask_error], df['elevation'][mask_error], 
-                   color='red', label='Error', s=15)
-    axs[1].scatter(df.index[mask_critical], df['elevation'][mask_critical], 
-                   color='black', label='Critical', s=15)
-
+    axs[1].scatter(df.index[mask_interlock], df['elevation'][mask_interlock],
+                   color='red', label='Interlock Faults', s=10, alpha=0.5)
+    axs[1].scatter(df.index[~mask_interlock], df['elevation'][~mask_interlock],
+                   color='black', label='Non-Interlock Faults', s=10, alpha=0.5)
+    
     axs[1].set_xlabel('Time (UTC)')
     axs[1].set_ylabel('TMA Elevation (degrees)')
     axs[1].grid(":", alpha=0.3)
