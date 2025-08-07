@@ -169,8 +169,50 @@ def plot_faults_vs_elevation(df: pd.DataFrame):
     """
     d_start = getDayObsForTime(Time(df.index[0]))
     d_end = getDayObsForTime(Time(df.index[-1]))
+
+    fig, axs = plt.subplots(2, 1, figsize=(12, 6), sharex=False)
     
-    mask_interlock = (df['errorCode'] & M1M3ErrorCode.INTERLOCK) > 0
+    # The first axis contains a histogram of the elevation values when 
+    # the faults occurred.
+    axs[0].hist(df['elevation'], bins=30, alpha=0.5, 
+                fc='red', ec='white', label='M1M3 Faults', log=True)
+
+    axs[0].set_title(f'Data from {d_start} to {d_end} - {df.index.size} data points')
+    axs[0].set_xlabel('Fault Occurrences')
+    axs[0].set_ylabel('Count')
+    axs[0].legend()
+
+    # The second axis contains a time plot showing when the faults occurred
+    # and the TMA elevation at that time.
+    axs[1].scatter(df.index, df['elevation'],
+                   color='red', label='M1M3 Faults', s=10, alpha=0.5)
+    
+    axs[1].set_xlabel('Time (UTC)')
+    axs[1].set_ylabel('TMA Elevation (degrees)')
+    axs[1].grid(":", alpha=0.3)
+    
+    fig.suptitle('M1M3 Faults vs TMA Elevation', fontsize=16)
+
+    fig.tight_layout()
+    plt.show()
+    
+    return fig 
+
+
+def plot_faults_vs_elevation_exclude_interlock_faults(df: pd.DataFrame):
+    """
+    Plot M1M3 faults against TMA elevation.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing M1M3 faults and elevation data.
+    """
+    d_start = getDayObsForTime(Time(df.index[0]))
+    d_end = getDayObsForTime(Time(df.index[-1]))
+
+    if interlock_faults:
+        mask_interlock = (df['errorCode'] & M1M3ErrorCode.INTERLOCK) > 0
     
     fig, axs = plt.subplots(2, 1, figsize=(12, 6), sharex=False)
     
